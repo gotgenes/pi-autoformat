@@ -3,7 +3,26 @@ import type {
   FormatterDefinition,
 } from "./formatter-registry.js";
 
-export const DEFAULT_FORMATTER_CONFIG: FormatterConfig = {
+export type FormatMode = "tool" | "prompt" | "session";
+
+export type UserFormatterConfig = {
+  formatMode?: FormatMode;
+  commandTimeoutMs?: number;
+  hideSummariesInTui?: boolean;
+  formatters?: Record<string, FormatterDefinition>;
+  chains?: Record<string, string[]>;
+};
+
+export type AutoformatConfig = FormatterConfig & {
+  formatMode: FormatMode;
+  commandTimeoutMs: number;
+  hideSummariesInTui: boolean;
+};
+
+export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
+  formatMode: "prompt",
+  commandTimeoutMs: 10000,
+  hideSummariesInTui: false,
   formatters: {
     prettier: {
       command: ["prettier", "--write", "$FILE"],
@@ -39,15 +58,16 @@ export const DEFAULT_FORMATTER_CONFIG: FormatterConfig = {
   },
 };
 
-export type UserFormatterConfig = {
-  formatters?: Record<string, FormatterDefinition>;
-  chains?: Record<string, string[]>;
-};
-
 export function createFormatterConfig(
   userConfig?: UserFormatterConfig,
-): FormatterConfig {
+): AutoformatConfig {
   return {
+    formatMode: userConfig?.formatMode ?? DEFAULT_FORMATTER_CONFIG.formatMode,
+    commandTimeoutMs:
+      userConfig?.commandTimeoutMs ?? DEFAULT_FORMATTER_CONFIG.commandTimeoutMs,
+    hideSummariesInTui:
+      userConfig?.hideSummariesInTui ??
+      DEFAULT_FORMATTER_CONFIG.hideSummariesInTui,
     formatters: {
       ...DEFAULT_FORMATTER_CONFIG.formatters,
       ...userConfig?.formatters,
