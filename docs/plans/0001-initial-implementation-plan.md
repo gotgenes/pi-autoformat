@@ -201,10 +201,20 @@ Potential next step:
 
 ## Suggested Configuration Shape
 
+Use extension-owned config files instead of Pi `settings.json` keys.
+
+Recommended locations:
+
+- global: `~/.pi/agent/extensions/pi-autoformat/config.json`
+- project: `.pi/extensions/pi-autoformat/config.json`
+
+Project config should override global config.
+
 Example draft only:
 
 ```json
 {
+  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
   "formatMode": "prompt",
   "hideSummariesInTui": false,
   "formatters": {
@@ -229,63 +239,129 @@ Notes:
 - `$FILE` substitution is simple and proven
 - a separate `chains` section may be clearer than relying only on formatter extension overlap
 - built-in formatters can exist, but project config should be able to override them cleanly
+- owning a dedicated config file makes it straightforward to publish a JSON Schema for editor validation and autocompletion
 
 ## Implementation Plan
 
 ### Phase 1: repository and extension skeleton
 
-- create package skeleton for a Pi extension
-- define config file location and schema
-- add minimal extension entry point
-- add a small README once implementation starts
+Status: largely complete.
+
+Completed:
+
+- created package skeleton for a Pi extension package
+- defined config file locations:
+  - global: `~/.pi/agent/extensions/pi-autoformat/config.json`
+  - project: `.pi/extensions/pi-autoformat/config.json`
+- defined config merge behavior with project overriding global
+- published a JSON Schema for the config file at `schemas/pi-autoformat.schema.json`
+- documented configuration in `docs/configuration.md`
+- added a README describing the problem, approach, install, and config
+- added `LICENSE`
+
+Remaining:
+
+- refine runtime behavior and reporting polish after initial lifecycle wiring
 
 ### Phase 2: touched-file collection and flush timing
 
-- watch successful `write` and `edit` tool results
-- resolve and normalize file paths
-- collect touched files during the current prompt
-- flush formatting at prompt end
-- serialize formatting operations per file
+Status: core implementation complete.
+
+Completed:
+
+- watchable touched-file collection primitives for `write` and `edit`
+- path resolution, normalization, and prompt-local deduping
+- prompt-end flush behavior in the core autoformatter
+- per-file sequential execution flow
+
+Remaining:
+
+- consider whether additional mutation sources should feed the touched-file queue in v1
 
 ### Phase 3: formatter registry
 
-- implement built-in formatter definitions
-- implement custom formatter config parsing
-- resolve enabled formatters for a file
-- substitute `$FILE`
-- execute configured commands with optional environment overrides
+Status: core implementation complete.
+
+Completed:
+
+- built-in formatter definitions
+- custom formatter config parsing and validation
+- formatter resolution by file
+- `$FILE` substitution
+- command execution with optional environment overrides
+
+Remaining:
+
+- decide whether project-local binary preference needs explicit detection behavior beyond command configuration
 
 ### Phase 4: formatter chain execution
 
-- support ordered execution for multiple formatters per extension/path kind
-- define chain behavior explicitly
-- capture per-run success/failure summaries
+Status: core implementation complete.
+
+Completed:
+
+- ordered execution for formatter chains
+- sequential chain behavior
+- per-run success/failure capture
+
+Remaining:
+
+- document and confirm whether explicit `chains` are the only supported ordering mechanism in v1
 
 ### Phase 5: reporting
 
-- interactive summaries in the TUI
-- warning logs outside the TUI
-- concise file-level reporting
+Status: baseline implementation complete.
+
+Completed:
+
+- interactive notifications for formatter summaries
+- non-interactive warning/info logging
+- concise file-level failure reporting
+- config-driven hiding of success summaries in interactive mode
+
+Remaining:
+
+- improve TUI presentation beyond basic notifications
+- expand reporting tests for interactive and non-interactive modes
 
 ### Phase 6: tests
 
-At minimum, test:
+Status: strong unit baseline complete.
+
+Completed:
 
 - no formatter configured => no-op
-- prompt-mode batching
+- prompt-mode batching behavior
 - sequential formatter chains for one file
 - custom formatter command overrides
 - formatter failure reporting without blocking edits
 - deduping touched files within the same prompt
 - path normalization and scope handling
+- config loading, merge precedence, and validation issue reporting
+
+Remaining:
+
+- reporting tests for interactive and non-interactive modes
 
 ### Phase 7: optional enhancements
+
+Still optional and not yet started:
 
 - session mode
 - tool mode
 - support for more mutation tools
 - optional shell mutation integration strategy
 - optional settings command / config editor UI
+
+## Remaining Work Summary
+
+The main remaining work for the first usable release is:
+
+1. polish interactive and non-interactive reporting
+2. add focused reporting tests
+3. do a final README pass once runtime behavior settles
+4. decide whether project-local binary preference needs explicit detection behavior
+5. document any remaining v1 limitations clearly
 
 ## Risks and Mitigations
 
@@ -322,20 +398,19 @@ Mitigation:
 
 These do not block repository creation, but should be answered during implementation:
 
-1. What should the config file path be for a shared Pi package?
-2. Should built-in formatter detection prefer project-local binaries over global commands?
-3. Should formatter chain order come from explicit config only, or can overlapping extension matches imply order?
-4. How much effort should go into shell-driven mutation coverage in v1?
-5. Should formatter failures ever be allowed to fail the overall tool call in a strict mode?
+1. Should built-in formatter detection prefer project-local binaries over global commands?
+2. Should formatter chain order come from explicit `chains` only in v1, with extension-overlap behavior treated as fallback only?
+3. How much effort should go into shell-driven mutation coverage in v1?
+4. Should formatter failures ever be allowed to fail the overall tool call in a strict mode?
+5. Should the schema URL examples point at the default branch, pinned tags, or both?
 
-## Recommended First Milestone
+## Recommended Next Milestone
 
-Build a Pi extension that:
+Polish the shipped extension runtime by:
 
-- hooks `write` and `edit`
-- batches touched files until prompt end
-- runs configured formatter chains on those files
-- supports at least custom commands with `$FILE`
-- reports formatter failures clearly without blocking edits
+- improving interactive summaries beyond basic notifications
+- adding focused reporting coverage for interactive and non-interactive runs
+- deciding how much formatter output detail should be exposed by default
+- tightening documentation around current limitations and expected behavior
 
-That delivers the core value quickly and addresses the original problem directly.
+That makes the first usable extension release more predictable without changing the core architecture.
