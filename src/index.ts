@@ -13,4 +13,8 @@ export {
   type ResolvedFormatter,
   resolveFormatterChainForFile,
 } from "./formatter-registry.js";
+export {
+  PromptAutoformatter,
+  type PromptAutoformatterResult,
+} from "./prompt-autoformatter.js";
 export { TouchedFilesQueue } from "./touched-files-queue.js";
