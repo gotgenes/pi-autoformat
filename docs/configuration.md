@@ -15,7 +15,14 @@ Project config overrides global config.
 
 The config file is designed to support JSON Schema validation and autocomplete.
 
-Example:
+You can point `$schema` at either:
+
+- the default-branch URL for the latest published schema
+- a pinned release-tag URL for reproducible validation
+
+Examples:
+
+Latest:
 
 ```json
 {
@@ -38,6 +45,14 @@ Example:
     ".ts": ["prettier"],
     ".tsx": ["prettier"]
   }
+}
+```
+
+Pinned tag:
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/v1.0.0/schemas/pi-autoformat.schema.json"
 }
 ```
 
@@ -89,6 +104,13 @@ Each formatter can define:
 - `disabled?: boolean`
 
 `$FILE` is replaced with the absolute path to the touched file.
+
+For v1, formatter command resolution stays intentionally simple:
+
+- commands run from the project `cwd`
+- commands inherit the extension process environment and `PATH`
+- the extension does not try to auto-detect and invoke project-local binaries on its own
+- if your repo needs wrappers such as `pnpm exec`, `npx`, or `mise x`, configure them explicitly in `command`
 
 Example:
 
@@ -149,4 +171,4 @@ This keeps repo-local formatter behavior explicit while still allowing users to 
 
 - Config is intentionally separate from Pi's shared `settings.json`.
 - A dedicated config file avoids collisions with Pi core settings and makes strict schema validation practical.
-- The schema URL in examples assumes this repository publishes `schemas/pi-autoformat.schema.json` from its default branch or release tags.
+- Schema URLs can point at either the default branch or pinned release tags depending on whether you want latest or reproducible validation behavior.

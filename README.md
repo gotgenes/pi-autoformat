@@ -89,6 +89,13 @@ Example:
 
 See [docs/configuration.md](docs/configuration.md) for the full configuration reference.
 
+Formatter command resolution in v1 stays intentionally simple:
+
+- built-in formatter commands run from the project `cwd`
+- the extension uses the inherited environment and `PATH`
+- if your environment manager already resolves the right tool for that directory, plain commands like `prettier` can work as-is
+- if your repo needs wrappers such as `pnpm exec`, `npx`, `mise x`, or similar, configure those commands explicitly in `formatters`
+
 ## Reporting behavior
 
 By default, `pi-autoformat` reports:
@@ -123,11 +130,24 @@ Example Markdown chain:
 
 ## Validation and autocomplete
 
-The config file supports JSON Schema-based validation and editor autocomplete via:
+The config file supports JSON Schema-based validation and editor autocomplete.
+
+You can use either:
+
+- the default-branch URL for the latest schema
+- a pinned release-tag URL for reproducible validation
+
+Examples:
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json"
+}
+```
+
+```json
+{
+  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/v1.0.0/schemas/pi-autoformat.schema.json"
 }
 ```
 

@@ -245,7 +245,7 @@ Notes:
 
 ### Phase 1: repository and extension skeleton
 
-Status: largely complete.
+Status: complete.
 
 Completed:
 
@@ -258,10 +258,7 @@ Completed:
 - documented configuration in `docs/configuration.md`
 - added a README describing the problem, approach, install, and config
 - added `LICENSE`
-
-Remaining:
-
-- refine runtime behavior and reporting polish after initial lifecycle wiring
+- added the Pi extension entry point and package wiring
 
 ### Phase 2: touched-file collection and flush timing
 
@@ -292,7 +289,7 @@ Completed:
 
 Remaining:
 
-- decide whether project-local binary preference needs explicit detection behavior beyond command configuration
+- no additional project-local binary auto-detection is planned for v1 beyond cwd/environment behavior and explicit command configuration
 
 ### Phase 4: formatter chain execution
 
@@ -310,7 +307,7 @@ Remaining:
 
 ### Phase 5: reporting
 
-Status: baseline implementation complete.
+Status: complete for v1 scope.
 
 Completed:
 
@@ -318,15 +315,16 @@ Completed:
 - non-interactive warning/info logging
 - concise file-level failure reporting
 - config-driven hiding of success summaries in interactive mode
+- focused reporting coverage for interactive and non-interactive modes
 
-Remaining:
+Deferred beyond v1:
 
-- improve TUI presentation beyond basic notifications
-- expand reporting tests for interactive and non-interactive modes
+- richer TUI presentation beyond basic notifications
+- optional exposure of full formatter stdout/stderr in summaries
 
 ### Phase 6: tests
 
-Status: strong unit baseline complete.
+Status: complete for v1 scope.
 
 Completed:
 
@@ -338,9 +336,7 @@ Completed:
 - deduping touched files within the same prompt
 - path normalization and scope handling
 - config loading, merge precedence, and validation issue reporting
-
-Remaining:
-
+- extension lifecycle tests for tool-result collection and flush timing
 - reporting tests for interactive and non-interactive modes
 
 ### Phase 7: optional enhancements
@@ -355,13 +351,13 @@ Still optional and not yet started:
 
 ## Remaining Work Summary
 
-The main remaining work for the first usable release is:
+The main remaining work before declaring the initial plan complete is:
 
-1. polish interactive and non-interactive reporting
-2. add focused reporting tests
-3. do a final README pass once runtime behavior settles
-4. decide whether project-local binary preference needs explicit detection behavior
-5. document any remaining v1 limitations clearly
+1. keep built-in formatter resolution simple for v1 and rely on cwd/environment plus explicit command overrides rather than local-tool auto-detection
+2. tighten formatter execution so v1 uses explicit `chains` only
+3. keep shell-driven mutation coverage explicitly out of v1 and documented as a limitation
+4. keep formatter failures visible but non-blocking, with no strict mode in v1
+5. keep README, schema guidance, and plan aligned with the final v1 decisions
 
 ## Risks and Mitigations
 
@@ -396,21 +392,21 @@ Mitigation:
 
 ## Open Questions
 
-These do not block repository creation, but should be answered during implementation:
+These questions have now been answered for v1:
 
-1. Should built-in formatter detection prefer project-local binaries over global commands?
-2. Should formatter chain order come from explicit `chains` only in v1, with extension-overlap behavior treated as fallback only?
-3. How much effort should go into shell-driven mutation coverage in v1?
-4. Should formatter failures ever be allowed to fail the overall tool call in a strict mode?
-5. Should the schema URL examples point at the default branch, pinned tags, or both?
+1. Answered: built-in formatter resolution should stay simple in v1 and rely on cwd/environment plus explicit command overrides, rather than trying to auto-detect and invoke project-local tools.
+2. Answered: v1 should use explicit `chains` only for formatter ordering and execution, rather than extension-overlap fallback behavior.
+3. Answered: shell-driven mutation coverage is excluded from v1 and should remain a documented limitation for now.
+4. Answered: formatter failures should remain visible but non-blocking in v1; no strict mode should be added yet.
+5. Answered: schema URL guidance should document both default-branch and pinned-tag options.
 
 ## Recommended Next Milestone
 
-Polish the shipped extension runtime by:
+Apply the resolved v1 product decisions to the implementation and docs by:
 
-- improving interactive summaries beyond basic notifications
-- adding focused reporting coverage for interactive and non-interactive runs
-- deciding how much formatter output detail should be exposed by default
-- tightening documentation around current limitations and expected behavior
+- keeping built-in formatter resolution simple and environment-driven for v1
+- enforcing explicit `chains` as the v1 execution model
+- keeping shell mutation tracking and strict failure mode out of scope
+- documenting both default-branch and pinned-tag schema URL guidance
 
-That makes the first usable extension release more predictable without changing the core architecture.
+That closes the remaining gap between the agreed v1 design and the shipped implementation.
