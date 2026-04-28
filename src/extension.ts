@@ -171,8 +171,14 @@ function reportMessage(
   console.log(output);
 }
 
-function summarizeFailures(result: PromptAutoformatterResult): string[] {
+type FailureSummary = {
+  lines: string[];
+  failedRunCount: number;
+};
+
+function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
   const lines: string[] = [];
+  let failedRunCount = 0;
 
   for (const file of result.files) {
     const failures = file.runs.filter((run) => !run.success);
@@ -180,13 +186,27 @@ function summarizeFailures(result: PromptAutoformatterResult): string[] {
       continue;
     }
 
+    failedRunCount += failures.length;
     const details = failures
       .map((run) => `${run.formatterName} (exit ${run.exitCode})`)
       .join(", ");
     lines.push(`${file.path}: ${details}`);
   }
 
-  return lines;
+  return {
+    lines,
+    failedRunCount,
+  };
+}
+
+function summarizeSuccessPaths(
+  result: PromptAutoformatterResult,
+): string | undefined {
+  if (result.files.length === 0 || result.files.length > 3) {
+    return undefined;
+  }
+
+  return result.files.map((file) => file.path).join(", ");
 }
 
 function defaultReportFlushResult(
@@ -200,13 +220,13 @@ function defaultReportFlushResult(
     return;
   }
 
-  const failureLines = summarizeFailures(result);
-  if (failureLines.length > 0) {
+  const failureSummary = summarizeFailures(result);
+  if (failureSummary.lines.length > 0) {
     reportMessage(
       options.ctx,
       [
-        `Formatter failures in ${failureLines.length} file${failureLines.length === 1 ? "" : "s"}:`,
-        ...failureLines,
+        `Formatter failures in ${failureSummary.lines.length} file${failureSummary.lines.length === 1 ? "" : "s"} (${failureSummary.failedRunCount} failed run${failureSummary.failedRunCount === 1 ? "" : "s"}):`,
+        ...failureSummary.lines,
       ].join("\n"),
       "warning",
     );
@@ -217,11 +237,12 @@ function defaultReportFlushResult(
     return;
   }
 
-  reportMessage(
-    options.ctx,
-    `Autoformatted ${result.files.length} file${result.files.length === 1 ? "" : "s"}.`,
-    "info",
-  );
+  const successPaths = summarizeSuccessPaths(result);
+  const message = successPaths
+    ? `Autoformatted ${result.files.length} file${result.files.length === 1 ? "" : "s"}: ${successPaths}`
+    : `Autoformatted ${result.files.length} file${result.files.length === 1 ? "" : "s"}.`;
+
+  reportMessage(options.ctx, message, "info");
 }
 
 function defaultReportConfigIssues(

@@ -52,13 +52,14 @@ function createLoadResult(
   };
 }
 
-function createContext(): TestContext {
+function createContext(overrides?: Partial<TestContext>): TestContext {
   return {
     cwd: "/repo",
     hasUI: true,
     ui: {
       notify: vi.fn(),
     },
+    ...overrides,
   };
 }
 
@@ -74,6 +75,163 @@ function createFlushResult(): PromptAutoformatterResult {
 }
 
 describe("createAutoformatExtension", () => {
+  it("reports interactive success summaries with touched file paths", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          files: [
+            {
+              path: "/repo/src/example.ts",
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+            },
+            {
+              path: "/repo/README.md",
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      "Autoformatted 2 files: /repo/src/example.ts, /repo/README.md",
+      "info",
+    );
+  });
+
+  it("hides interactive success summaries when configured", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult("prompt"),
+        config: createFormatterConfig({
+          formatMode: "prompt",
+          hideSummariesInTui: true,
+        }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("reports non-interactive formatter failures via console warnings", async () => {
+    const pi = new TestPi();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const ctx = createContext({ hasUI: false });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          files: [
+            {
+              path: "/repo/README.md",
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write", "/repo/README.md"],
+                  success: false,
+                  exitCode: 2,
+                },
+                {
+                  formatterName: "markdownlint-cli2",
+                  command: ["markdownlint-cli2", "--fix", "/repo/README.md"],
+                  success: false,
+                  exitCode: 1,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(warn).toHaveBeenCalledWith(
+      "[pi-autoformat] Formatter failures in 1 file (2 failed runs):\n/repo/README.md: prettier (exit 2), markdownlint-cli2 (exit 1)",
+    );
+    expect(log).not.toHaveBeenCalled();
+
+    warn.mockRestore();
+    log.mockRestore();
+  });
+
+  it("reports non-interactive config issues via console warnings", async () => {
+    const pi = new TestPi();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const ctx = createContext({ hasUI: false });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult("prompt"),
+        issues: [
+          {
+            path: "formatMode",
+            message: "Expected a valid mode.",
+            sourcePath: "/repo/.pi/extensions/pi-autoformat/config.json",
+          },
+        ],
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+
+    expect(warn).toHaveBeenCalledWith(
+      "[pi-autoformat] Configuration issues detected:\n/repo/.pi/extensions/pi-autoformat/config.json formatMode: Expected a valid mode.",
+    );
+
+    warn.mockRestore();
+  });
+
   it("records successful tool results and flushes at prompt end in prompt mode", async () => {
     const pi = new TestPi();
     const ctx = createContext();

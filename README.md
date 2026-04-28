@@ -27,6 +27,7 @@ Design goals:
 - support repository-specific formatter commands
 - support ordered formatter chains for the same extension
 - surface formatter failures without blocking the original edit by default
+- keep reporting concise by default, with interactive summaries and non-interactive logs
 
 Default behavior is **prompt mode**:
 
@@ -88,6 +89,20 @@ Example:
 
 See [docs/configuration.md](docs/configuration.md) for the full configuration reference.
 
+## Reporting behavior
+
+By default, `pi-autoformat` reports:
+
+- concise success summaries after formatting runs
+- per-file failure summaries when one or more formatter commands fail
+- config validation issues detected while loading global or project config
+
+In the interactive TUI, these appear as notifications.
+
+Outside the TUI, they are written as prefixed log lines.
+
+Set `hideSummariesInTui` to `true` if you want to suppress interactive success summaries while still surfacing failures.
+
 ## Formatter model
 
 Each formatter entry can define:
@@ -120,7 +135,13 @@ The config file supports JSON Schema-based validation and editor autocomplete vi
 
 This project is under active development.
 
-The current repository includes the formatter registry, execution pipeline, touched-file queue, config loading and validation, and the Pi extension runtime wiring for prompt-, tool-, and session-mode flushing. Reporting is currently baseline and still needs polish.
+The current repository includes the formatter registry, execution pipeline, touched-file queue, config loading and validation, and the Pi extension runtime wiring for prompt-, tool-, and session-mode flushing.
+
+Known v1 limitations:
+
+- only Pi `write` and `edit` mutations are tracked automatically
+- arbitrary shell-driven file mutations are not detected yet
+- reporting is intentionally concise and does not yet expose full formatter stdout/stderr by default
 
 ## Development
 
