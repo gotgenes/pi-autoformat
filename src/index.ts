@@ -1,6 +1,11 @@
 export const extensionName = "pi-autoformat";
 
 export {
+  createFormatterConfig,
+  DEFAULT_FORMATTER_CONFIG,
+  type UserFormatterConfig,
+} from "./formatter-config.js";
+export {
   type CommandRunner,
   type CommandRunnerOptions,
   type CommandRunResult,
