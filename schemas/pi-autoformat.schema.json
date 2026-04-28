@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
+  "title": "pi-autoformat configuration",
+  "description": "Configuration for the pi-autoformat Pi extension.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional schema URL for editor validation and autocomplete."
+    },
+    "formatMode": {
+      "type": "string",
+      "enum": ["tool", "prompt", "session"],
+      "description": "When formatting should run."
+    },
+    "commandTimeoutMs": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Timeout in milliseconds for each formatter command."
+    },
+    "hideSummariesInTui": {
+      "type": "boolean",
+      "description": "Hide formatter summaries in the interactive TUI."
+    },
+    "formatters": {
+      "type": "object",
+      "description": "Formatter registry keyed by formatter name.",
+      "additionalProperties": {
+        "$ref": "#/$defs/formatterDefinition"
+      }
+    },
+    "chains": {
+      "type": "object",
+      "description": "Ordered formatter chains keyed by file extension.",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^\\..+"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  },
+  "$defs": {
+    "formatterDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "array",
+          "description": "Command argv used to format a file. Use $FILE as the file placeholder.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "extensions": {
+          "type": "array",
+          "description": "File extensions this formatter applies to.",
+          "items": {
+            "type": "string",
+            "pattern": "^\\..+"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "environment": {
+          "type": "object",
+          "description": "Environment variables to set when running the formatter.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "Disable this formatter entry."
+        }
+      }
+    }
+  }
+}
