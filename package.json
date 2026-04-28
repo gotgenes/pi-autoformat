@@ -13,10 +13,15 @@
     "lint:fix": "pnpm exec biome check --write --files-ignore-unknown=true . && pnpm run lint:md:fix",
     "lint:md": "pnpm exec markdownlint-cli2 '*.md' 'docs/**/*.md'",
     "lint:md:fix": "pnpm exec markdownlint-cli2 --fix '*.md' 'docs/**/*.md'",
-    "format": "pnpm exec biome check --write --files-ignore-unknown=true ."
+    "format": "pnpm exec biome check --write --files-ignore-unknown=true .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
-    "markdownlint-cli2": "^0.22.1"
+    "@types/node": "^25.6.0",
+    "markdownlint-cli2": "^0.22.1",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   }
 }
