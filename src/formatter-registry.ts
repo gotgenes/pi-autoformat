@@ -28,28 +28,15 @@ export function resolveFormatterChainForFile(
   }
 
   const chainNames = config.chains?.[extension];
-  if (chainNames) {
-    return chainNames
-      .map((formatterName) =>
-        resolveFormatterByName(formatterName, filePath, config),
-      )
-      .filter(
-        (formatter): formatter is ResolvedFormatter => formatter !== null,
-      );
+  if (!chainNames) {
+    return [];
   }
 
-  return Object.entries(config.formatters)
-    .filter(([, formatter]) => !formatter.disabled)
-    .filter(([, formatter]) =>
-      formatter.extensions
-        .map((entry) => entry.toLowerCase())
-        .includes(extension),
+  return chainNames
+    .map((formatterName) =>
+      resolveFormatterByName(formatterName, filePath, config),
     )
-    .map(([name, formatter]) => ({
-      name,
-      command: substituteFileToken(formatter.command, filePath),
-      environment: formatter.environment,
-    }));
+    .filter((formatter): formatter is ResolvedFormatter => formatter !== null);
 }
 
 function resolveFormatterByName(

@@ -50,6 +50,8 @@ Read `docs/plans/` before making architectural changes.
 ## Commits
 
 - Use Conventional Commits.
+- Commit at meaningful checkpoints without waiting for an explicit reminder.
+- Prefer small, reviewable commits that leave the repository in a valid state.
 - Examples:
   - `feat: add prompt-end formatter queue`
   - `fix: preserve formatter order for markdown chains`

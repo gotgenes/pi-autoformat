@@ -303,7 +303,7 @@ Completed:
 
 Remaining:
 
-- document and confirm whether explicit `chains` are the only supported ordering mechanism in v1
+- implement and document explicit `chains`-only execution behavior for v1
 
 ### Phase 5: reporting
 
@@ -354,10 +354,9 @@ Still optional and not yet started:
 The main remaining work before declaring the initial plan complete is:
 
 1. keep built-in formatter resolution simple for v1 and rely on cwd/environment plus explicit command overrides rather than local-tool auto-detection
-2. tighten formatter execution so v1 uses explicit `chains` only
-3. keep shell-driven mutation coverage explicitly out of v1 and documented as a limitation
-4. keep formatter failures visible but non-blocking, with no strict mode in v1
-5. keep README, schema guidance, and plan aligned with the final v1 decisions
+2. keep shell-driven mutation coverage explicitly out of v1 and documented as a limitation
+3. keep formatter failures visible but non-blocking, with no strict mode in v1
+4. keep README, schema guidance, and plan aligned with the final v1 decisions
 
 ## Risks and Mitigations
 

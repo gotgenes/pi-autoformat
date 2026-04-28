@@ -136,6 +136,9 @@ Example:
 
 Ordered formatter chains keyed by file extension.
 
+For v1, formatter execution is driven by explicit `chains` only.
+If an extension has no `chains` entry, `pi-autoformat` does not run any formatter for that extension.
+
 The chain order is explicit and should be preserved.
 
 Example:

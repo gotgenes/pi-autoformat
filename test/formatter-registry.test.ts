@@ -31,10 +31,10 @@ describe("resolveFormatterChainForFile", () => {
     ]);
   });
 
-  it("falls back to extension matches when no explicit chain exists", () => {
+  it("returns an empty chain when no explicit chain exists for the extension", () => {
     const chain = resolveFormatterChainForFile("/repo/src/index.ts", config);
 
-    expect(chain.map((entry) => entry.name)).toEqual(["prettier"]);
+    expect(chain).toEqual([]);
   });
 
   it("substitutes $FILE in formatter commands", () => {

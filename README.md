@@ -123,6 +123,8 @@ Each formatter entry can define:
 
 Chains are configured separately so formatter order is explicit.
 
+For v1, `pi-autoformat` runs formatters only when a `chains` entry exists for the file extension.
+
 Example Markdown chain:
 
 1. `prettier --write`
