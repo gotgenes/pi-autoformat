@@ -262,7 +262,7 @@ Completed:
 
 ### Phase 2: touched-file collection and flush timing
 
-Status: core implementation complete.
+Status: complete for v1 scope.
 
 Completed:
 
@@ -271,13 +271,13 @@ Completed:
 - prompt-end flush behavior in the core autoformatter
 - per-file sequential execution flow
 
-Remaining:
+Deferred beyond v1:
 
-- consider whether additional mutation sources should feed the touched-file queue in v1
+- consider whether additional mutation sources should feed the touched-file queue
 
 ### Phase 3: formatter registry
 
-Status: core implementation complete.
+Status: complete for v1 scope.
 
 Completed:
 
@@ -286,24 +286,18 @@ Completed:
 - formatter resolution by file
 - `$FILE` substitution
 - command execution with optional environment overrides
-
-Remaining:
-
-- no additional project-local binary auto-detection is planned for v1 beyond cwd/environment behavior and explicit command configuration
+- v1 formatter command resolution documented as cwd/environment-driven with explicit command overrides for wrapper-based workflows
 
 ### Phase 4: formatter chain execution
 
-Status: core implementation complete.
+Status: complete for v1 scope.
 
 Completed:
 
 - ordered execution for formatter chains
 - sequential chain behavior
 - per-run success/failure capture
-
-Remaining:
-
-- implement and document explicit `chains`-only execution behavior for v1
+- explicit `chains`-only execution behavior for v1
 
 ### Phase 5: reporting
 
@@ -351,12 +345,16 @@ Still optional and not yet started:
 
 ## Remaining Work Summary
 
-The main remaining work before declaring the initial plan complete is:
+The planned v1 work is complete.
 
-1. keep built-in formatter resolution simple for v1 and rely on cwd/environment plus explicit command overrides rather than local-tool auto-detection
-2. keep shell-driven mutation coverage explicitly out of v1 and documented as a limitation
-3. keep formatter failures visible but non-blocking, with no strict mode in v1
-4. keep README, schema guidance, and plan aligned with the final v1 decisions
+Post-v1 follow-up work is tracked in GitHub issues for:
+
+1. richer TUI formatter summaries
+2. optional detailed formatter output in reports
+3. support for additional Pi mutation tools
+4. shell-driven mutation coverage investigation
+5. settings/config editor UI
+6. optional strict mode for formatter failures
 
 ## Risks and Mitigations
 
@@ -401,11 +399,4 @@ These questions have now been answered for v1:
 
 ## Recommended Next Milestone
 
-Apply the resolved v1 product decisions to the implementation and docs by:
-
-- keeping built-in formatter resolution simple and environment-driven for v1
-- enforcing explicit `chains` as the v1 execution model
-- keeping shell mutation tracking and strict failure mode out of scope
-- documenting both default-branch and pinned-tag schema URL guidance
-
-That closes the remaining gap between the agreed v1 design and the shipped implementation.
+Ship the v1 release, then continue with the deferred follow-up work tracked in GitHub issues.
