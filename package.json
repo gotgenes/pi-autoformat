@@ -1,6 +1,6 @@
 {
   "name": "@gotgenes/pi-autoformat",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Pi extension package for prompt-end auto-formatting",
   "author": {
     "name": "Chris Lasher"

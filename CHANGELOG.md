@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.0](https://github.com/gotgenes/pi-autoformat/compare/v0.2.0...v0.3.0) (2026-04-29)
+
+
+### Features
+
+* add format scope filter with repo-root default and cwd fallback ([aa5449b](https://github.com/gotgenes/pi-autoformat/commit/aa5449b99a15ffa480e5fdd0140bedb08566bf31))
+* detect file mutations from shell commands (opt-in) ([3d06d48](https://github.com/gotgenes/pi-autoformat/commit/3d06d48c96038463dfa46c85e1f6007668c5103e))
+
+
+### Documentation
+
+* add plan for shell-driven mutation coverage ([3784e7c](https://github.com/gotgenes/pi-autoformat/commit/3784e7cf8bc7c710865a60b99748aff227f686bb))
+
 ## [0.2.0](https://github.com/gotgenes/pi-autoformat/compare/v0.1.0...v0.2.0) (2026-04-29)
 
 
