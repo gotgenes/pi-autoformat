@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -95,7 +101,10 @@ describe("isInFormatScope", () => {
   });
 
   it("uses realpath to drop symlinked workspace deps that escape the root", () => {
-    const root = mkdtempSync(join(tmpdir(), "pi-fmtscope-"));
+    // Resolve tmpdir realpath up front so this test exercises the symlink
+    // escape check identically on Linux (where /tmp is real) and macOS
+    // (where /tmp is a symlink to /private/tmp).
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "pi-fmtscope-")));
     const repo = join(root, "repo");
     const external = join(root, "external");
     mkdirSync(join(repo, "node_modules"), { recursive: true });
@@ -114,7 +123,7 @@ describe("isInFormatScope", () => {
   });
 
   it("includes a symlink whose realpath lands inside the root", () => {
-    const root = mkdtempSync(join(tmpdir(), "pi-fmtscope-"));
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "pi-fmtscope-")));
     const repo = join(root, "repo");
     mkdirSync(join(repo, "real"), { recursive: true });
     writeFileSync(join(repo, "real", "x.ts"), "");

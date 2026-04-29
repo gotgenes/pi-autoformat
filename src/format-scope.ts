@@ -98,21 +98,19 @@ function isUnder(
 /**
  * Returns true if `absCandidate` is inside any scope root.
  *
- * If the candidate path exists, both sides are realpath'd so that symlinked
- * workspace deps resolve correctly. If the candidate does not exist (e.g.,
- * a `mv` source after a move), the normalized absolute form is used.
+ * The candidate is realpath'd so that symlinked workspace deps that escape
+ * the root are correctly excluded, and intentional symlinks within the root
+ * are correctly included. If the candidate does not exist (e.g., a `mv`
+ * source after a move), `safeRealpath` returns the normalized absolute form,
+ * so the same check handles both cases.
  */
 export function isInFormatScope(
   absCandidate: string,
   scope: FormatScope,
 ): boolean {
-  const normalized = path.normalize(absCandidate);
-  const resolvedCandidate = safeRealpath(normalized);
+  const resolvedCandidate = safeRealpath(path.normalize(absCandidate));
   for (const root of scope.roots) {
-    if (
-      isUnder(resolvedCandidate, root, scope.caseInsensitive) ||
-      isUnder(normalized, root, scope.caseInsensitive)
-    ) {
+    if (isUnder(resolvedCandidate, root, scope.caseInsensitive)) {
       return true;
     }
   }
