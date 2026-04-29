@@ -1,3 +1,4 @@
+import type { FormatScope } from "./format-scope.js";
 import {
   type CommandRunner,
   executeFormatterChain,
@@ -7,13 +8,21 @@ import {
   type FormatterConfig,
   resolveFormatterChainForFile,
 } from "./formatter-registry.js";
-import { TouchedFilesQueue } from "./touched-files-queue.js";
+import {
+  type MutationSourceHandler,
+  TouchedFilesQueue,
+} from "./touched-files-queue.js";
 
 export type PromptAutoformatterResult = {
   files: Array<{
     path: string;
     runs: FormatterExecutionResult[];
   }>;
+};
+
+export type PromptAutoformatterOptions = {
+  scope?: FormatScope;
+  mutationHandlers?: MutationSourceHandler[];
 };
 
 export class PromptAutoformatter {
@@ -23,12 +32,21 @@ export class PromptAutoformatter {
     private readonly cwd: string,
     private readonly config: FormatterConfig,
     private readonly runner: CommandRunner,
+    options?: PromptAutoformatterOptions,
   ) {
-    this.queue = new TouchedFilesQueue(cwd);
+    this.queue = new TouchedFilesQueue({
+      cwd,
+      scope: options?.scope,
+      handlers: options?.mutationHandlers,
+    });
   }
 
-  recordToolResult(toolName: string, payload: unknown): void {
-    this.queue.recordToolResult(toolName, payload);
+  recordToolResult(toolName: string, payload: unknown, output = ""): void {
+    this.queue.recordToolResult(toolName, payload, output);
+  }
+
+  addTouchedPath(filePath: string): void {
+    this.queue.addPath(filePath);
   }
 
   async flushPrompt(): Promise<PromptAutoformatterResult> {
