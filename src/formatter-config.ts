@@ -26,6 +26,8 @@ export type AutoformatConfig = FormatterConfig & {
   hideSummariesInTui: boolean;
   formatScope: FormatScopeSetting;
   shellMutationDetection: ShellMutationDetectionConfig;
+  formatters: Record<string, FormatterDefinition>;
+  chains: Record<string, string[]>;
 };
 
 export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {

@@ -57,7 +57,7 @@ type ExtensionHandler<TEvent> = (
   ctx: ExtensionContextLike,
 ) => void | Promise<void>;
 
-type ExtensionApiLike = {
+export type ExtensionApiLike = {
   on(eventName: "session_start", handler: ExtensionHandler<unknown>): void;
   on(
     eventName: "tool_call",

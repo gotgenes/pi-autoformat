@@ -1,11 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { LoadConfigResult } from "../src/config-loader.js";
-import { createAutoformatExtension } from "../src/extension.js";
+import {
+  createAutoformatExtension,
+  type ExtensionApiLike,
+} from "../src/extension.js";
 import { createFormatterConfig } from "../src/formatter-config.js";
 import type { PromptAutoformatterResult } from "../src/prompt-autoformatter.js";
 
-type Handler = (event: unknown, ctx: TestContext) => void | Promise<void>;
+type Handler = (event: never, ctx: TestContext) => void | Promise<void>;
 
 type EventName =
   | "session_start"
@@ -25,11 +28,14 @@ type TestContext = {
 class TestPi {
   private readonly handlers = new Map<EventName, Handler[]>();
 
-  on(eventName: EventName, handler: Handler): void {
+  readonly on: ExtensionApiLike["on"] = (
+    eventName: EventName,
+    handler: Handler,
+  ): void => {
     const existing = this.handlers.get(eventName) ?? [];
     existing.push(handler);
     this.handlers.set(eventName, existing);
-  }
+  };
 
   async emit(
     eventName: EventName,
@@ -37,7 +43,7 @@ class TestPi {
     ctx: TestContext,
   ): Promise<void> {
     for (const handler of this.handlers.get(eventName) ?? []) {
-      await handler(event, ctx);
+      await handler(event as never, ctx);
     }
   }
 }
