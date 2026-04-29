@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/gotgenes/pi-autoformat/compare/v0.3.0...v0.3.1) (2026-04-29)
+
+
+### Bug Fixes
+
+* do not bypass realpath escape check via lexical path in scope test ([89bbae5](https://github.com/gotgenes/pi-autoformat/commit/89bbae50597be7cf406ecb262c2bb71a7fe0e604))
+* pass typecheck for AutoformatConfig and TestPi in tests ([f6e57b1](https://github.com/gotgenes/pi-autoformat/commit/f6e57b12fb7f7c070bb186b5c7369d0d6d5e94da))
+
+
+### Documentation
+
+* add status badges to README ([358ca02](https://github.com/gotgenes/pi-autoformat/commit/358ca02bfb43e8e64952d10c2d5784562c6e4e1b))
+* bump pnpm badge to &gt;=10 to match packageManager ([175fd83](https://github.com/gotgenes/pi-autoformat/commit/175fd832d066c838a1a8721a8dc888dc0f3e99a3))
+
 ## [0.3.0](https://github.com/gotgenes/pi-autoformat/compare/v0.2.0...v0.3.0) (2026-04-29)
 
 
