@@ -16,6 +16,12 @@ export {
   default as autoformatExtension,
 } from "./extension.js";
 export {
+  type FormatScope,
+  type FormatScopeSetting,
+  isInFormatScope,
+  resolveFormatScope,
+} from "./format-scope.js";
+export {
   type AutoformatConfig,
   createFormatterConfig,
   DEFAULT_FORMATTER_CONFIG,
@@ -39,4 +45,16 @@ export {
   PromptAutoformatter,
   type PromptAutoformatterResult,
 } from "./prompt-autoformatter.js";
-export { TouchedFilesQueue } from "./touched-files-queue.js";
+export {
+  DEFAULT_SHELL_MUTATION_DETECTION,
+  matchWrapper,
+  parseKnownCommand,
+  type ShellMutationDetectionConfig,
+  SnapshotTracker,
+  type WrapperConfig,
+} from "./shell-mutation-detector.js";
+export {
+  type MutationSourceHandler,
+  TouchedFilesQueue,
+  writeOrEditHandler,
+} from "./touched-files-queue.js";

@@ -24,6 +24,50 @@
       "type": "boolean",
       "description": "Hide formatter summaries in the interactive TUI."
     },
+    "formatScope": {
+      "description": "Boundary for files eligible for formatting. 'repoRoot' (default) detects the Git toplevel and falls back to cwd; 'cwd' restricts to the strict cwd subtree; an array of paths is an explicit allowlist of roots resolved relative to cwd.",
+      "oneOf": [
+        { "type": "string", "enum": ["repoRoot", "cwd"] },
+        {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
+        }
+      ]
+    },
+    "shellMutationDetection": {
+      "type": "object",
+      "description": "Opt-in detection of file mutations performed by shell commands.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Master switch for shell mutation detection. Defaults to false."
+        },
+        "argumentParsing": {
+          "type": "boolean",
+          "description": "Parse known mutating commands (sed -i, mv, cp, touch, tee, redirections). Defaults to true once detection is enabled."
+        },
+        "snapshotGlobs": {
+          "type": "array",
+          "description": "Globs whose mtimes are snapshotted before/after each bash invocation. Files whose mtime advanced are treated as touched.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "wrappers": {
+          "type": "array",
+          "description": "Shell command prefixes that print touched files on stdout.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["prefix"],
+            "properties": {
+              "prefix": { "type": "string", "minLength": 1 },
+              "outputFormat": { "type": "string", "enum": ["lines"] }
+            }
+          }
+        }
+      }
+    },
     "formatters": {
       "type": "object",
       "description": "Formatter registry keyed by formatter name.",

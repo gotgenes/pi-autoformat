@@ -161,9 +161,40 @@ The current repository includes the formatter registry, execution pipeline, touc
 
 Known v1 limitations:
 
-- only Pi `write` and `edit` mutations are tracked automatically
-- arbitrary shell-driven file mutations are not detected yet
+- shell mutation detection is opt-in (see below) and intentionally narrow
 - reporting is intentionally concise and does not yet expose full formatter stdout/stderr by default
+
+## Format scope
+
+Paths outside the configured `formatScope` are silently dropped from the
+touched-files queue. The default scope is the Git toplevel detected via
+`git rev-parse --show-toplevel`, with a fallback to `cwd` when not in a Git
+repo. Set `formatScope` to `"cwd"` for a strict cwd subtree, or to an array
+of paths for an explicit allowlist. Symlinks are resolved on both sides so
+workspace deps that link out of the scope are correctly excluded.
+
+This is a tightening of v1 behavior: previously `write` / `edit` would
+format any path the agent supplied. The new default closes a latent gap and
+is almost certainly what users already expect; configure `formatScope`
+explicitly if you need a broader allowlist.
+
+## Shell mutation coverage
+
+Files modified by `bash` invocations — `sed -i`, `mv`, `cp`, `touch`, `tee`,
+redirections, codegen wrappers — are invisible to the touched-files queue
+by default. Set `shellMutationDetection.enabled` to `true` to opt in.
+
+Three explicit, low-noise strategies are available:
+
+1. **Argument parsing** (default on once detection is enabled) for a small
+   whitelist of known mutating commands. Bails on pipelines, command
+   substitutions, and unknown flags.
+2. **Snapshot tracking** of explicit globs around each `bash` invocation —
+   files whose mtime advanced are treated as touched.
+3. **User-declared wrappers** that already print the files they touched on
+   stdout (one per line).
+
+See [docs/configuration.md](docs/configuration.md) for the full configuration.
 
 ## Development
 

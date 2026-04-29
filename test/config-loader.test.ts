@@ -167,6 +167,70 @@ describe("loadAutoformatConfig", () => {
     expect(result.issues).toEqual([]);
   });
 
+  it("loads formatScope and shellMutationDetection settings", () => {
+    const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
+    const cwd = join(root, "project");
+    const agentDir = join(root, "agent");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(agentDir, { recursive: true });
+
+    mkdirSync(join(agentDir, "extensions", "pi-autoformat"), {
+      recursive: true,
+    });
+    writeFileSync(
+      getGlobalConfigPath(agentDir),
+      JSON.stringify({
+        formatScope: "cwd",
+        shellMutationDetection: {
+          enabled: true,
+          snapshotGlobs: ["src/**/*.ts"],
+        },
+      }),
+    );
+
+    mkdirSync(join(cwd, ".pi", "extensions", "pi-autoformat"), {
+      recursive: true,
+    });
+    writeFileSync(
+      getProjectConfigPath(cwd),
+      JSON.stringify({
+        formatScope: ["packages/a"],
+        shellMutationDetection: {
+          snapshotGlobs: ["docs/**/*.md"],
+          wrappers: [{ prefix: "pnpm codegen", outputFormat: "lines" }],
+        },
+      }),
+    );
+
+    const result = loadAutoformatConfig({ cwd, agentDir });
+
+    expect(result.issues).toEqual([]);
+    expect(result.config.formatScope).toEqual(["packages/a"]);
+    expect(result.config.shellMutationDetection).toEqual({
+      enabled: true,
+      argumentParsing: true,
+      snapshotGlobs: ["docs/**/*.md"],
+      wrappers: [{ prefix: "pnpm codegen", outputFormat: "lines" }],
+    });
+  });
+
+  it("defaults shellMutationDetection to disabled with formatScope=repoRoot", () => {
+    const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
+    const cwd = join(root, "project");
+    const agentDir = join(root, "agent");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(agentDir, { recursive: true });
+
+    const result = loadAutoformatConfig({ cwd, agentDir });
+    expect(result.config.formatScope).toBe("repoRoot");
+    expect(result.config.shellMutationDetection).toEqual({
+      enabled: false,
+      argumentParsing: true,
+      snapshotGlobs: [],
+      wrappers: [],
+    });
+  });
+
   it("reports parse and validation errors without throwing", () => {
     const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
     const cwd = join(root, "project");

@@ -7,12 +7,22 @@ import {
   type LoadConfigResult,
   loadAutoformatConfig,
 } from "./config-loader.js";
+import { resolveFormatScope } from "./format-scope.js";
 import type { AutoformatConfig } from "./formatter-config.js";
 import type { CommandRunner, CommandRunResult } from "./formatter-executor.js";
 import {
   PromptAutoformatter,
   type PromptAutoformatterResult,
 } from "./prompt-autoformatter.js";
+import {
+  matchWrapper,
+  parseKnownCommand,
+  SnapshotTracker,
+} from "./shell-mutation-detector.js";
+import {
+  type MutationSourceHandler,
+  writeOrEditHandler,
+} from "./touched-files-queue.js";
 
 const execFileAsync = promisify(execFile);
 const COMMAND_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
@@ -27,10 +37,19 @@ type ExtensionContextLike = {
   };
 };
 
+type TextContentLike = { type?: string; text?: string };
+
 type ToolResultEventLike = {
   toolName: string;
   input: unknown;
   isError: boolean;
+  /** Optional output content from the tool. Bash provides stdout text here. */
+  content?: TextContentLike[];
+};
+
+type ToolCallEventLike = {
+  toolName: string;
+  input: unknown;
 };
 
 type ExtensionHandler<TEvent> = (
@@ -41,6 +60,10 @@ type ExtensionHandler<TEvent> = (
 type ExtensionApiLike = {
   on(eventName: "session_start", handler: ExtensionHandler<unknown>): void;
   on(
+    eventName: "tool_call",
+    handler: ExtensionHandler<ToolCallEventLike>,
+  ): void;
+  on(
     eventName: "tool_result",
     handler: ExtensionHandler<ToolResultEventLike>,
   ): void;
@@ -50,7 +73,7 @@ type ExtensionApiLike = {
 
 type PromptAutoformatterLike = Pick<
   PromptAutoformatter,
-  "recordToolResult" | "flushPrompt"
+  "recordToolResult" | "flushPrompt" | "addTouchedPath"
 >;
 
 type AutoformatExtensionDependencies = {
@@ -78,6 +101,7 @@ type SessionState = {
   cwd: string;
   loadResult: LoadConfigResult;
   autoformatter: PromptAutoformatterLike;
+  snapshotTracker: SnapshotTracker | undefined;
 };
 
 type ExecFileError = Error & {
@@ -145,11 +169,67 @@ function createDefaultAutoformatter(
   cwd: string,
   config: AutoformatConfig,
 ): PromptAutoformatterLike {
+  const scope = resolveFormatScope({ cwd, setting: config.formatScope });
+  const handlers: MutationSourceHandler[] = [writeOrEditHandler];
+
+  if (config.shellMutationDetection.enabled) {
+    handlers.push(createBashMutationHandler(config));
+  }
+
   return new PromptAutoformatter(
     cwd,
     config,
     createCommandRunner(config.commandTimeoutMs),
+    { scope, mutationHandlers: handlers },
   );
+}
+
+function createBashMutationHandler(
+  config: AutoformatConfig,
+): MutationSourceHandler {
+  const detection = config.shellMutationDetection;
+  return (toolName, payload, output) => {
+    if (toolName !== "bash") {
+      return [];
+    }
+    const command = extractBashCommand(payload);
+    if (!command) {
+      return [];
+    }
+    const candidates: string[] = [];
+    if (detection.argumentParsing) {
+      candidates.push(...parseKnownCommand(command));
+    }
+    if (detection.wrappers.length > 0) {
+      candidates.push(...matchWrapper(command, output, detection.wrappers));
+    }
+    return candidates;
+  };
+}
+
+function extractBashCommand(payload: unknown): string | undefined {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "command" in payload &&
+    typeof (payload as { command: unknown }).command === "string"
+  ) {
+    return (payload as { command: string }).command;
+  }
+  return undefined;
+}
+
+function extractToolOutputText(content: TextContentLike[] | undefined): string {
+  if (!content) {
+    return "";
+  }
+  const parts: string[] = [];
+  for (const item of content) {
+    if (item && typeof item.text === "string") {
+      parts.push(item.text);
+    }
+  }
+  return parts.join("\n");
 }
 
 function reportMessage(
@@ -298,10 +378,19 @@ export function createAutoformatExtension(
     }
 
     const loadResult = loadConfig(cwd);
+    const detection = loadResult.config.shellMutationDetection;
+    const snapshotTracker =
+      detection.enabled && detection.snapshotGlobs.length > 0
+        ? new SnapshotTracker({
+            cwd,
+            globs: detection.snapshotGlobs,
+          })
+        : undefined;
     state = {
       cwd,
       loadResult,
       autoformatter: createAutoformatter(cwd, loadResult.config),
+      snapshotTracker,
     };
     return state;
   }
@@ -333,13 +422,33 @@ export function createAutoformatExtension(
     reportConfigIssues(sessionState.loadResult.issues, { ctx });
   });
 
+  pi.on("tool_call", async (event, ctx) => {
+    if (event.toolName !== "bash") {
+      return;
+    }
+    const sessionState = ensureState(ctx.cwd);
+    sessionState.snapshotTracker?.before();
+  });
+
   pi.on("tool_result", async (event, ctx) => {
     if (event.isError) {
       return;
     }
 
     const sessionState = ensureState(ctx.cwd);
-    sessionState.autoformatter.recordToolResult(event.toolName, event.input);
+    const output = extractToolOutputText(event.content);
+    sessionState.autoformatter.recordToolResult(
+      event.toolName,
+      event.input,
+      output,
+    );
+
+    if (event.toolName === "bash" && sessionState.snapshotTracker) {
+      const snapshotTouched = sessionState.snapshotTracker.after();
+      for (const touched of snapshotTouched) {
+        sessionState.autoformatter.addTouchedPath(touched);
+      }
+    }
 
     if (sessionState.loadResult.config.formatMode === "tool") {
       await queueFlush(ctx);

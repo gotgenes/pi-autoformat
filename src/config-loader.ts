@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import type { FormatScopeSetting } from "./format-scope.js";
 import {
   type AutoformatConfig,
   createFormatterConfig,
@@ -9,6 +10,10 @@ import {
   type UserFormatterConfig,
 } from "./formatter-config.js";
 import type { FormatterDefinition } from "./formatter-registry.js";
+import type {
+  ShellMutationDetectionConfig,
+  WrapperConfig,
+} from "./shell-mutation-detector.js";
 
 export const AUTOFORMAT_EXTENSION_ID = "pi-autoformat";
 export const AUTOFORMAT_CONFIG_FILE_NAME = "config.json";
@@ -351,6 +356,208 @@ function validateChains(
   return chains;
 }
 
+function validateFormatScope(
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): FormatScopeSetting | undefined {
+  if (value === "repoRoot" || value === "cwd") {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    const result: string[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const entry = value[index];
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          `formatScope[${index}]`,
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      result.push(entry);
+    }
+    return result;
+  }
+  pushIssue(
+    issues,
+    "formatScope",
+    'Expected "repoRoot", "cwd", or an array of paths.',
+    sourcePath,
+  );
+  return undefined;
+}
+
+function validateWrapper(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): WrapperConfig | undefined {
+  if (!isRecord(value)) {
+    pushIssue(issues, fieldPath, "Expected an object.", sourcePath);
+    return undefined;
+  }
+  const wrapper: Partial<WrapperConfig> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "prefix") {
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          `${fieldPath}.prefix`,
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      wrapper.prefix = entry;
+      continue;
+    }
+    if (key === "outputFormat") {
+      if (entry !== "lines") {
+        pushIssue(
+          issues,
+          `${fieldPath}.outputFormat`,
+          'Expected "lines".',
+          sourcePath,
+        );
+        return undefined;
+      }
+      wrapper.outputFormat = entry;
+      continue;
+    }
+    pushIssue(
+      issues,
+      `${fieldPath}.${key}`,
+      "Unknown wrapper property.",
+      sourcePath,
+    );
+  }
+  if (!wrapper.prefix) {
+    pushIssue(
+      issues,
+      `${fieldPath}.prefix`,
+      "Missing required property.",
+      sourcePath,
+    );
+    return undefined;
+  }
+  return { prefix: wrapper.prefix, outputFormat: wrapper.outputFormat };
+}
+
+function validateShellMutationDetection(
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): Partial<ShellMutationDetectionConfig> | undefined {
+  if (!isRecord(value)) {
+    pushIssue(
+      issues,
+      "shellMutationDetection",
+      "Expected an object.",
+      sourcePath,
+    );
+    return undefined;
+  }
+  const result: Partial<ShellMutationDetectionConfig> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "enabled") {
+      const enabled = validateBooleanField(
+        "shellMutationDetection.enabled",
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (enabled !== undefined) {
+        result.enabled = enabled;
+      }
+      continue;
+    }
+    if (key === "argumentParsing") {
+      const argumentParsing = validateBooleanField(
+        "shellMutationDetection.argumentParsing",
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (argumentParsing !== undefined) {
+        result.argumentParsing = argumentParsing;
+      }
+      continue;
+    }
+    if (key === "snapshotGlobs") {
+      if (!Array.isArray(entry)) {
+        pushIssue(
+          issues,
+          "shellMutationDetection.snapshotGlobs",
+          "Expected an array of strings.",
+          sourcePath,
+        );
+        continue;
+      }
+      const globs: string[] = [];
+      let valid = true;
+      for (let index = 0; index < entry.length; index += 1) {
+        const glob = entry[index];
+        if (typeof glob !== "string" || glob.length === 0) {
+          pushIssue(
+            issues,
+            `shellMutationDetection.snapshotGlobs[${index}]`,
+            "Expected a non-empty string.",
+            sourcePath,
+          );
+          valid = false;
+          break;
+        }
+        globs.push(glob);
+      }
+      if (valid) {
+        result.snapshotGlobs = globs;
+      }
+      continue;
+    }
+    if (key === "wrappers") {
+      if (!Array.isArray(entry)) {
+        pushIssue(
+          issues,
+          "shellMutationDetection.wrappers",
+          "Expected an array.",
+          sourcePath,
+        );
+        continue;
+      }
+      const wrappers: WrapperConfig[] = [];
+      let valid = true;
+      for (let index = 0; index < entry.length; index += 1) {
+        const wrapper = validateWrapper(
+          `shellMutationDetection.wrappers[${index}]`,
+          entry[index],
+          issues,
+          sourcePath,
+        );
+        if (!wrapper) {
+          valid = false;
+          break;
+        }
+        wrappers.push(wrapper);
+      }
+      if (valid) {
+        result.wrappers = wrappers;
+      }
+      continue;
+    }
+    pushIssue(
+      issues,
+      `shellMutationDetection.${key}`,
+      "Unknown property.",
+      sourcePath,
+    );
+  }
+  return result;
+}
+
 function validateConfigObject(
   value: unknown,
   sourcePath?: string,
@@ -420,6 +627,26 @@ function validateConfigObject(
       continue;
     }
 
+    if (key === "formatScope") {
+      const formatScope = validateFormatScope(entry, issues, sourcePath);
+      if (formatScope !== undefined) {
+        config.formatScope = formatScope;
+      }
+      continue;
+    }
+
+    if (key === "shellMutationDetection") {
+      const detection = validateShellMutationDetection(
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (detection !== undefined) {
+        config.shellMutationDetection = detection;
+      }
+      continue;
+    }
+
     pushIssue(issues, key, "Unknown top-level property.", sourcePath);
   }
 
@@ -449,6 +676,11 @@ function mergeUserConfigs(
     formatMode: overrides.formatMode ?? base.formatMode,
     commandTimeoutMs: overrides.commandTimeoutMs ?? base.commandTimeoutMs,
     hideSummariesInTui: overrides.hideSummariesInTui ?? base.hideSummariesInTui,
+    formatScope: overrides.formatScope ?? base.formatScope,
+    shellMutationDetection: mergeShellMutationDetection(
+      base.shellMutationDetection,
+      overrides.shellMutationDetection,
+    ),
     formatters: {
       ...base.formatters,
       ...overrides.formatters,
@@ -457,6 +689,20 @@ function mergeUserConfigs(
       ...base.chains,
       ...overrides.chains,
     },
+  };
+}
+
+function mergeShellMutationDetection(
+  base: Partial<ShellMutationDetectionConfig> | undefined,
+  overrides: Partial<ShellMutationDetectionConfig> | undefined,
+): Partial<ShellMutationDetectionConfig> | undefined {
+  if (!base && !overrides) {
+    return undefined;
+  }
+  // Per AGENTS.md / plan: arrays replace, scalars override.
+  return {
+    ...(base ?? {}),
+    ...(overrides ?? {}),
   };
 }
 

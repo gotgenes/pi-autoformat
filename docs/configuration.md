@@ -80,6 +80,80 @@ Example:
 }
 ```
 
+### `formatScope`
+
+Boundary used to filter the touched-files queue. Paths outside the configured
+scope are dropped silently.
+
+Allowed values:
+
+- `"repoRoot"` (default) — detect the Git toplevel via
+  `git rev-parse --show-toplevel` and use it as the scope. Falls back to `cwd`
+  when not in a Git repo.
+- `"cwd"` — strict cwd subtree.
+- `string[]` — explicit allowlist of roots, each resolved relative to `cwd`.
+  A path is in scope if it falls under any configured root.
+
+Symlinks are resolved on both sides via `fs.realpath`, so a symlinked workspace
+dep that resolves outside the scope is correctly filtered, and a symlink
+pointing into the scope is correctly included.
+
+Example:
+
+```json
+{
+  "formatScope": ["packages/server", "packages/shared"]
+}
+```
+
+### `shellMutationDetection`
+
+Opt-in detection of files mutated by shell (`bash`) commands. Disabled by
+default; enable to surface files touched by `sed -i`, `mv`, `cp`, `touch`,
+`tee`, redirections, or user-declared codegen wrappers.
+
+Defaults:
+
+```json
+{
+  "shellMutationDetection": {
+    "enabled": false,
+    "argumentParsing": true,
+    "snapshotGlobs": [],
+    "wrappers": []
+  }
+}
+```
+
+Fields:
+
+- `enabled` — master switch. Defaults to `false`.
+- `argumentParsing` — parse a small whitelist of known mutating commands
+  (`sed -i`, `mv`, `cp`, `touch`, `tee`, plus simple `>` / `>>`
+  redirections). Bails on pipelines, command substitutions, sequencing, and
+  unknown flags so the surface stays auditable.
+- `snapshotGlobs` — globs whose mtimes are sampled before and after each
+  `bash` invocation. Files whose mtime advanced are treated as touched.
+  Capped at 5,000 entries with a warning on overflow. Defaults to `[]`.
+- `wrappers` — shell command prefixes that already print the files they
+  touched on stdout. Each entry has a `prefix` (matched at the start of the
+  bash command) and optional `outputFormat` (currently only `"lines"`).
+
+Example:
+
+```json
+{
+  "shellMutationDetection": {
+    "enabled": true,
+    "snapshotGlobs": ["src/**/*.ts", "docs/**/*.md"],
+    "wrappers": [{ "prefix": "pnpm codegen", "outputFormat": "lines" }]
+  }
+}
+```
+
+Merge semantics: `snapshotGlobs` and `wrappers` arrays replace lower-precedence
+values rather than merging — consistent with other array fields in this config.
+
 ### `hideSummariesInTui`
 
 Whether formatter summaries should be hidden in the interactive TUI.

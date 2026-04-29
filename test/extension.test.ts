@@ -9,6 +9,7 @@ type Handler = (event: unknown, ctx: TestContext) => void | Promise<void>;
 
 type EventName =
   | "session_start"
+  | "tool_call"
   | "tool_result"
   | "agent_end"
   | "session_shutdown";
@@ -259,10 +260,14 @@ describe("createAutoformatExtension", () => {
     );
     await pi.emit("agent_end", {}, ctx);
 
-    expect(autoformatter.recordToolResult).toHaveBeenCalledWith("write", {
-      path: "src/example.ts",
-      content: "export {};",
-    });
+    expect(autoformatter.recordToolResult).toHaveBeenCalledWith(
+      "write",
+      {
+        path: "src/example.ts",
+        content: "export {};",
+      },
+      "",
+    );
     expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
     expect(reportFlushResult).toHaveBeenCalledTimes(1);
   });
@@ -323,6 +328,39 @@ describe("createAutoformatExtension", () => {
 
     expect(autoformatter.recordToolResult).not.toHaveBeenCalled();
     expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
+  });
+
+  it("forwards bash tool output to the autoformatter", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const autoformatter = {
+      recordToolResult: vi.fn(),
+      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      addTouchedPath: vi.fn(),
+    };
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue(autoformatter),
+      reportFlushResult: vi.fn(),
+    });
+
+    await pi.emit(
+      "tool_result",
+      {
+        toolName: "bash",
+        input: { command: "sed -i 's/a/b/' foo.txt" },
+        isError: false,
+        content: [{ type: "text", text: "some output" }],
+      },
+      ctx,
+    );
+
+    expect(autoformatter.recordToolResult).toHaveBeenCalledWith(
+      "bash",
+      { command: "sed -i 's/a/b/' foo.txt" },
+      "some output",
+    );
   });
 
   it("reports config issues on session start", async () => {
