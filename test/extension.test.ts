@@ -256,7 +256,7 @@ describe("createAutoformatExtension", () => {
       }),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
-        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
       }),
     });
 
@@ -313,7 +313,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext();
     const autoformatter = {
       recordToolResult: vi.fn(),
-      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
     };
 
     createAutoformatExtension(pi, {
@@ -341,7 +341,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext();
     const autoformatter = {
       recordToolResult: vi.fn(),
-      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
     };
 
     createAutoformatExtension(pi, {
@@ -371,7 +371,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext();
     const autoformatter = {
       recordToolResult: vi.fn(),
-      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
       addTouchedPath: vi.fn(),
     };
 
@@ -417,7 +417,7 @@ describe("createAutoformatExtension", () => {
       }),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
-        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
       }),
       reportConfigIssues,
     });
@@ -442,7 +442,7 @@ describe("createAutoformatExtension", () => {
     const addTouchedPath = vi.fn();
     const autoformatter = {
       recordToolResult: vi.fn(),
-      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
       addTouchedPath,
     };
 
@@ -485,7 +485,7 @@ describe("createAutoformatExtension", () => {
       }),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
-        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
         addTouchedPath: vi.fn(),
       }),
       reportFlushResult: vi.fn(),
@@ -510,7 +510,7 @@ describe("createAutoformatExtension", () => {
       }),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
-        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
         addTouchedPath,
       }),
       reportFlushResult: vi.fn(),
@@ -540,6 +540,8 @@ describe("createAutoformatExtension", () => {
     );
     const result = await autoformatter.flushPrompt();
 
-    expect(result.files.map((f) => f.path)).toEqual(["/repo/src/generated.ts"]);
+    expect(result.groups.flatMap((g) => g.files)).toEqual([
+      "/repo/src/generated.ts",
+    ]);
   });
 });

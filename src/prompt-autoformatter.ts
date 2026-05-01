@@ -1,23 +1,27 @@
 import type { FormatScope } from "./format-scope.js";
 import {
+  type BatchRun,
   type CommandRunner,
-  executeFormatterChain,
-  type FormatterExecutionResult,
+  executeChainGroup,
 } from "./formatter-executor.js";
 import {
   type FormatterConfig,
-  resolveFormatterChainForFile,
+  groupFilesByChain,
+  resolveChain,
 } from "./formatter-registry.js";
 import {
   type MutationSourceHandler,
   TouchedFilesQueue,
 } from "./touched-files-queue.js";
 
+export type ChainGroupResult = {
+  chain: string[];
+  files: string[];
+  runs: BatchRun[];
+};
+
 export type PromptAutoformatterResult = {
-  files: Array<{
-    path: string;
-    runs: FormatterExecutionResult[];
-  }>;
+  groups: ChainGroupResult[];
 };
 
 export type PromptAutoformatterOptions = {
@@ -51,26 +55,28 @@ export class PromptAutoformatter {
 
   async flushPrompt(): Promise<PromptAutoformatterResult> {
     const touchedFiles = this.queue.flush();
-    const fileResults: PromptAutoformatterResult["files"] = [];
+    const fileGroups = groupFilesByChain(touchedFiles, this.config);
+    const groupResults: ChainGroupResult[] = [];
 
-    for (const filePath of touchedFiles) {
-      const chain = resolveFormatterChainForFile(filePath, this.config);
-      if (chain.length === 0) {
+    for (const group of fileGroups) {
+      const resolved = resolveChain(group.chain, this.config);
+      if (resolved.length === 0) {
         continue;
       }
 
-      const runs = await executeFormatterChain(chain, this.runner, {
-        cwd: this.cwd,
-      });
+      const runs = await executeChainGroup(
+        { chain: resolved, files: group.files },
+        this.runner,
+        { cwd: this.cwd },
+      );
 
-      fileResults.push({
-        path: filePath,
+      groupResults.push({
+        chain: group.chain,
+        files: [...group.files],
         runs,
       });
     }
 
-    return {
-      files: fileResults,
-    };
+    return { groups: groupResults };
   }
 }
