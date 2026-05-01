@@ -186,6 +186,45 @@ describe("validateUserFormatterConfig", () => {
       ).toBe(true);
     });
 
+    it("warns when a fallback alternative names an unknown formatter and drops the step", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: {
+          ".ts": [{ fallback: ["zogzog", "prettier"] }],
+        },
+      });
+      const unknown = result.issues.filter(
+        (i) => i.path === "chains..ts[0].fallback[0]",
+      );
+      expect(unknown).toHaveLength(1);
+      expect(unknown[0]?.message).toMatch(/unknown|not found/i);
+      expect(result.config.chains?.[".ts"]).toBeUndefined();
+    });
+
+    it("warns when a single string step references an unknown formatter and drops the step", () => {
+      const result = validateUserFormatterConfig({
+        formatters: {},
+        chains: { ".ts": ["zogzog"] },
+      });
+      const unknown = result.issues.filter(
+        (i) => i.path === "chains..ts[0]",
+      );
+      expect(unknown).toHaveLength(1);
+      expect(unknown[0]?.message).toMatch(/unknown|not found/i);
+      expect(result.config.chains?.[".ts"]).toBeUndefined();
+    });
+
+    it("does not warn when a chain references a built-in default formatter not redeclared locally", () => {
+      const result = validateUserFormatterConfig({
+        chains: { ".md": ["prettier", "markdownlint-cli2"] },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains?.[".md"]).toEqual([
+        "prettier",
+        "markdownlint-cli2",
+      ]);
+    });
+
     it("rejects a non-string entry inside fallback", () => {
       const result = validateUserFormatterConfig({
         formatters: { prettier: { command: ["prettier", "--write"] } },

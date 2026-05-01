@@ -7,6 +7,7 @@ import type { FormatScopeSetting } from "./format-scope.js";
 import {
   type AutoformatConfig,
   createFormatterConfig,
+  DEFAULT_FORMATTER_CONFIG,
   type EventBusMutationChannelConfig,
   type FormatMode,
   type UserFormatterConfig,
@@ -325,6 +326,7 @@ function validateFallbackStep(
   value: Record<string, unknown>,
   issues: ConfigValidationIssue[],
   sourcePath?: string,
+  knownFormatterNames?: Set<string>,
 ): FallbackChainStep | undefined {
   let fallbackValue: unknown;
   let hasUnknown = false;
@@ -353,6 +355,7 @@ function validateFallbackStep(
   }
 
   const names: string[] = [];
+  let nameError = false;
   for (let index = 0; index < fallbackValue.length; index += 1) {
     const entry = fallbackValue[index];
     if (typeof entry !== "string" || entry.length === 0) {
@@ -364,10 +367,20 @@ function validateFallbackStep(
       );
       return undefined;
     }
+    if (knownFormatterNames && !knownFormatterNames.has(entry)) {
+      pushIssue(
+        issues,
+        `${fieldPath}.fallback[${index}]`,
+        `Unknown formatter name "${entry}". Declare it in \`formatters\` or remove it from the fallback group.`,
+        sourcePath,
+      );
+      nameError = true;
+      continue;
+    }
     names.push(entry);
   }
 
-  if (hasUnknown) {
+  if (hasUnknown || nameError) {
     return undefined;
   }
 
@@ -379,6 +392,7 @@ function validateChainStep(
   value: unknown,
   issues: ConfigValidationIssue[],
   sourcePath?: string,
+  knownFormatterNames?: Set<string>,
 ): ChainStep | undefined {
   if (typeof value === "string") {
     if (value.length === 0) {
@@ -390,11 +404,26 @@ function validateChainStep(
       );
       return undefined;
     }
+    if (knownFormatterNames && !knownFormatterNames.has(value)) {
+      pushIssue(
+        issues,
+        fieldPath,
+        `Unknown formatter name "${value}". Declare it in \`formatters\` or remove it from \`chains\`.`,
+        sourcePath,
+      );
+      return undefined;
+    }
     return value;
   }
 
   if (isRecord(value)) {
-    return validateFallbackStep(fieldPath, value, issues, sourcePath);
+    return validateFallbackStep(
+      fieldPath,
+      value,
+      issues,
+      sourcePath,
+      knownFormatterNames,
+    );
   }
 
   pushIssue(
@@ -409,7 +438,8 @@ function validateChainStep(
 function validateChains(
   value: unknown,
   issues: ConfigValidationIssue[],
-  sourcePath?: string,
+  sourcePath: string | undefined,
+  knownFormatterNames: Set<string>,
 ): Record<string, ChainStep[]> | undefined {
   if (!isRecord(value)) {
     pushIssue(issues, "chains", "Expected an object.", sourcePath);
@@ -446,6 +476,7 @@ function validateChains(
         chainValue[index],
         issues,
         sourcePath,
+        knownFormatterNames,
       );
       if (!step) {
         stepError = true;
@@ -896,6 +927,9 @@ function validateConfigObject(
     return { config, issues };
   }
 
+  // Two passes: validate everything except chains first so we can build the
+  // known-formatter-name set (built-ins + this file's formatters) before
+  // validating chains' formatter references.
   for (const [key, entry] of Object.entries(value)) {
     if (key === "$schema") {
       if (typeof entry !== "string") {
@@ -946,10 +980,7 @@ function validateConfigObject(
     }
 
     if (key === "chains") {
-      const chains = validateChains(entry, issues, sourcePath);
-      if (chains) {
-        config.chains = chains;
-      }
+      // Defer chains until we know which formatter names are valid in this file.
       continue;
     }
 
@@ -994,6 +1025,22 @@ function validateConfigObject(
     }
 
     pushIssue(issues, key, "Unknown top-level property.", sourcePath);
+  }
+
+  if ("chains" in value) {
+    const knownFormatterNames = new Set<string>([
+      ...Object.keys(DEFAULT_FORMATTER_CONFIG.formatters),
+      ...Object.keys(config.formatters ?? {}),
+    ]);
+    const chains = validateChains(
+      (value as Record<string, unknown>).chains,
+      issues,
+      sourcePath,
+      knownFormatterNames,
+    );
+    if (chains) {
+      config.chains = chains;
+    }
   }
 
   return { config, issues };
