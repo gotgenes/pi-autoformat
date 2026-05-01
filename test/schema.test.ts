@@ -3,11 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-const schemaPath = join(
-  process.cwd(),
-  "schemas",
-  "pi-autoformat.schema.json",
-);
+const schemaPath = join(process.cwd(), "schemas", "pi-autoformat.schema.json");
 
 type SchemaShape = {
   $defs?: {

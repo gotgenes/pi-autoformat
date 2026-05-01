@@ -90,9 +90,7 @@ describe("validateUserFormatterConfig", () => {
         command: ["prettier", "--write"],
       },
     });
-    expect(result.config.formatters?.prettier).not.toHaveProperty(
-      "extensions",
-    );
+    expect(result.config.formatters?.prettier).not.toHaveProperty("extensions");
     const extensionsIssues = result.issues.filter(
       (issue) => issue.path === "formatters.prettier.extensions",
     );
