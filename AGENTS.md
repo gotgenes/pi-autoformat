@@ -51,6 +51,9 @@ Read `docs/plans/` before making architectural changes.
 - Project config overrides global config.
 - Do not move package configuration into Pi `settings.json` without explicit discussion.
 - Keep `schemas/pi-autoformat.schema.json`, `docs/configuration.md`, `README.md`, and the TypeScript config loader aligned.
+- When removing a previously accepted config field, keep the loader tolerant: accept the legacy key, emit a single non-fatal config issue per occurrence describing the deprecation, and discard the value.
+  Drop the field from the TypeScript types, the JSON schema, and the docs in the same change.
+  This avoids breaking on-disk configs while still surfacing the trap.
 
 ## Testing
 
