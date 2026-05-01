@@ -1,5 +1,31 @@
 # Changelog
 
+## [1.0.0](https://github.com/gotgenes/pi-autoformat/compare/v0.4.0...v1.0.0) (2026-05-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* removes resolveFormatterChainForFile, executeFormatterChain, and FormatterExecutionResult. Default formatter commands no longer include $FILE; the schema rejects $FILE in formatter command arguments.
+* failure summaries are now grouped per batch instead of per file (one line per failed batch listing the files it ran against).
+* PromptAutoformatterResult now exposes groups[] instead of files[]; each group runs its chain once with all files appended.
+* $FILE substitution is no longer supported. File paths are appended to the command automatically by the batch executor.
+
+### Features
+
+* add resolveChain for name-based formatter resolution ([b67dbc3](https://github.com/gotgenes/pi-autoformat/commit/b67dbc389441930b545275ee67d0f7aca601ca53))
+* batch-dispatch chain steps via executeChainGroup ([83a6627](https://github.com/gotgenes/pi-autoformat/commit/83a6627433586dc46850a6bc81b809c55a4c7fc9))
+* drop $FILE substitution and per-file dispatch path ([d26f825](https://github.com/gotgenes/pi-autoformat/commit/d26f825487e8fa3ced0498e23f64089abc9dee6d))
+* group touched files by chain identity ([6a8832b](https://github.com/gotgenes/pi-autoformat/commit/6a8832b6e1c25518d558da295dba977ce086ae4d))
+* reject $FILE in formatter commands ([3865b34](https://github.com/gotgenes/pi-autoformat/commit/3865b349b9ed9ef1dff1a66a3411511c4d82d4cf))
+* report formatter results per batch ([d16d7b1](https://github.com/gotgenes/pi-autoformat/commit/d16d7b1694f566f2963af6d353b7ad4356305592))
+* switch PromptAutoformatter to group-based batch dispatch ([42845ee](https://github.com/gotgenes/pi-autoformat/commit/42845eef246f7d7db2182c99596dd656e753f6de))
+
+
+### Documentation
+
+* document batch-by-default formatter dispatch ([1e363d2](https://github.com/gotgenes/pi-autoformat/commit/1e363d2755f67d766941ea5800196429cf2176dd))
+* plan batch-by-default formatter dispatch ([#14](https://github.com/gotgenes/pi-autoformat/issues/14)) ([ce330cd](https://github.com/gotgenes/pi-autoformat/commit/ce330cd668edb33ffc9541ad1749c0af168498bd))
+
 ## [0.4.0](https://github.com/gotgenes/pi-autoformat/compare/v0.3.1...v0.4.0) (2026-05-01)
 
 
