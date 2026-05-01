@@ -7,6 +7,7 @@ import {
   type LoadConfigResult,
   loadAutoformatConfig,
 } from "./config-loader.js";
+import { createCustomToolHandlers } from "./custom-mutation-tools.js";
 import { resolveFormatScope } from "./format-scope.js";
 import type { AutoformatConfig } from "./formatter-config.js";
 import type { CommandRunner, CommandRunResult } from "./formatter-executor.js";
@@ -165,12 +166,16 @@ function createCommandRunner(commandTimeoutMs: number): CommandRunner {
   };
 }
 
-function createDefaultAutoformatter(
+export function createDefaultAutoformatter(
   cwd: string,
   config: AutoformatConfig,
 ): PromptAutoformatterLike {
   const scope = resolveFormatScope({ cwd, setting: config.formatScope });
   const handlers: MutationSourceHandler[] = [writeOrEditHandler];
+
+  if (config.customMutationTools.length > 0) {
+    handlers.push(...createCustomToolHandlers(config.customMutationTools));
+  }
 
   if (config.shellMutationDetection.enabled) {
     handlers.push(createBashMutationHandler(config));

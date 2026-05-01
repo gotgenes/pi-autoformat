@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { LoadConfigResult } from "../src/config-loader.js";
 import {
   createAutoformatExtension,
+  createDefaultAutoformatter,
   type ExtensionApiLike,
 } from "../src/extension.js";
 import { createFormatterConfig } from "../src/formatter-config.js";
@@ -404,5 +405,31 @@ describe("createAutoformatExtension", () => {
       ],
       { ctx },
     );
+  });
+
+  it("wires customMutationTools into the default autoformatter queue", async () => {
+    const config = createFormatterConfig({
+      customMutationTools: [
+        { toolName: "my-codegen", pathField: "output" },
+      ],
+      formatters: {
+        "echo-fmt": {
+          extensions: [".ts"],
+          command: ["true"],
+        },
+      },
+    });
+    const autoformatter = createDefaultAutoformatter("/repo", config);
+
+    autoformatter.recordToolResult(
+      "my-codegen",
+      { output: "src/generated.ts" },
+      "",
+    );
+    const result = await autoformatter.flushPrompt();
+
+    expect(result.files.map((f) => f.path)).toEqual([
+      "/repo/src/generated.ts",
+    ]);
   });
 });
