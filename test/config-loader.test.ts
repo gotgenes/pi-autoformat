@@ -79,6 +79,29 @@ describe("validateUserFormatterConfig", () => {
     expect(result.config.formatters).toEqual({});
   });
 
+  it("accepts a deprecated extensions field on a formatter and drops it with a notice", () => {
+    const result = validateUserFormatterConfig({
+      formatters: {
+        prettier: {
+          command: ["prettier", "--write"],
+          extensions: [".ts"],
+        },
+      },
+    });
+
+    expect(result.config.formatters).toEqual({
+      prettier: {
+        command: ["prettier", "--write"],
+      },
+    });
+    expect(result.config.formatters.prettier).not.toHaveProperty("extensions");
+    const extensionsIssues = result.issues.filter(
+      (issue) => issue.path === "formatters.prettier.extensions",
+    );
+    expect(extensionsIssues).toHaveLength(1);
+    expect(extensionsIssues[0]?.message).toMatch(/[Dd]eprecat/);
+  });
+
   it("reports invalid fields and returns only valid fragments", () => {
     const result = validateUserFormatterConfig({
       formatMode: "later",
