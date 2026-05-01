@@ -113,10 +113,17 @@ Field semantics:
 
 - `toolName` (string, required): exact match against `event.toolName`.
 - `pathField` (string, optional): single dotted path into `event.input`.
-  Resolves nested fields, e.g. `"args.path"`. The value at that location
-  must be a string; non-strings are ignored (no coercion).
-- `pathFields` (string[], optional): multiple dotted paths. Each may
-  resolve to a string *or* a string array; arrays are flattened.
+  Resolves nested fields, e.g. `"args.path"`.
+- `pathFields` (string[], optional): multiple dotted paths.
+- For both forms, the resolved value may be a string or a string array;
+  string arrays are flattened. Non-string scalars (numbers, booleans,
+  null) are ignored. `pathField` and `pathFields` differ only in arity,
+  not in value handling — a tool whose field is sometimes a string and
+  sometimes a string array should not require switching keys.
+  *(Refined during test-first implementation: the original draft made
+  `pathField` string-only, which would have forced users to switch to
+  `pathFields` for any tool with a variadic field. Unifying value
+  handling removes that foot-gun.)*
 - Exactly one of `pathField` / `pathFields` is required. Specifying both
   is a config validation error.
 
