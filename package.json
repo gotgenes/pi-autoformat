@@ -2,6 +2,17 @@
   "name": "@gotgenes/pi-autoformat",
   "version": "1.0.0",
   "description": "Pi extension package for prompt-end auto-formatting",
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-coding-agent",
+    "autoformat",
+    "formatter",
+    "prompt-end",
+    "biome",
+    "prettier",
+    "typescript"
+  ],
   "author": {
     "name": "Chris Lasher"
   },
