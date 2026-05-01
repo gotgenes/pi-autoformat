@@ -35,6 +35,7 @@ Design goals:
 - support ordered formatter chains for the same extension
 - surface formatter failures without blocking the original edit by default
 - keep reporting concise by default, with interactive summaries and non-interactive logs
+- delegate formatter configuration to the formatters themselves — `pi-autoformat` invokes the tool and lets it find its own project config (Prettier, Biome, ESLint, ruff, etc. all walk up the directory tree natively)
 
 Default behavior is **prompt mode**:
 
