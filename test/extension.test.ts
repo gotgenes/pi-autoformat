@@ -293,7 +293,11 @@ describe("createAutoformatExtension", () => {
     await pi.emit("agent_end", {}, ctx);
 
     const messages = notify.mock.calls.map((call) => call[0] as string);
-    expect(messages.some((m) => /prettier \(fallback after biome unavailable\)/.test(m))).toBe(true);
+    expect(
+      messages.some((m) =>
+        /prettier \(fallback after biome unavailable\)/.test(m),
+      ),
+    ).toBe(true);
   });
 
   it("renders fallback context in failure summaries when present", async () => {

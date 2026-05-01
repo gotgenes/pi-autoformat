@@ -134,10 +134,7 @@ describe("validateUserFormatterConfig", () => {
           },
         },
         chains: {
-          ".md": [
-            { fallback: ["biome", "prettier"] },
-            "markdownlint-cli2",
-          ],
+          ".md": [{ fallback: ["biome", "prettier"] }, "markdownlint-cli2"],
         },
       });
       expect(result.issues).toEqual([]);
@@ -167,11 +164,9 @@ describe("validateUserFormatterConfig", () => {
           ".ts": [{ fallback: ["prettier"], when: "never" }],
         },
       });
-      expect(
-        result.issues.some(
-          (i) => i.path === "chains..ts[0].when",
-        ),
-      ).toBe(true);
+      expect(result.issues.some((i) => i.path === "chains..ts[0].when")).toBe(
+        true,
+      );
     });
 
     it("rejects a step that is neither string nor fallback object", () => {
@@ -179,11 +174,7 @@ describe("validateUserFormatterConfig", () => {
         formatters: { prettier: { command: ["prettier", "--write"] } },
         chains: { ".ts": [42 as unknown as string] },
       });
-      expect(
-        result.issues.some(
-          (i) => i.path === "chains..ts[0]",
-        ),
-      ).toBe(true);
+      expect(result.issues.some((i) => i.path === "chains..ts[0]")).toBe(true);
     });
 
     it("warns when a fallback alternative names an unknown formatter and drops the step", () => {
@@ -206,9 +197,7 @@ describe("validateUserFormatterConfig", () => {
         formatters: {},
         chains: { ".ts": ["zogzog"] },
       });
-      const unknown = result.issues.filter(
-        (i) => i.path === "chains..ts[0]",
-      );
+      const unknown = result.issues.filter((i) => i.path === "chains..ts[0]");
       expect(unknown).toHaveLength(1);
       expect(unknown[0]?.message).toMatch(/unknown|not found/i);
       expect(result.config.chains?.[".ts"]).toBeUndefined();
@@ -233,9 +222,7 @@ describe("validateUserFormatterConfig", () => {
         },
       });
       expect(
-        result.issues.some(
-          (i) => i.path === "chains..ts[0].fallback[1]",
-        ),
+        result.issues.some((i) => i.path === "chains..ts[0].fallback[1]"),
       ).toBe(true);
     });
   });

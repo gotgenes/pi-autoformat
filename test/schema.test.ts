@@ -58,9 +58,7 @@ describe("pi-autoformat.schema.json", () => {
       const items = schema.properties?.chains?.additionalProperties?.items as
         | { oneOf?: Array<Record<string, unknown>> }
         | undefined;
-      const fallbackVariant = items?.oneOf?.find(
-        (v) => v?.type === "object",
-      ) as
+      const fallbackVariant = items?.oneOf?.find((v) => v?.type === "object") as
         | {
             type?: string;
             additionalProperties?: boolean;

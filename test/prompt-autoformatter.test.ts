@@ -150,12 +150,9 @@ describe("PromptAutoformatter", () => {
       return cmd === "prettier";
     };
 
-    const formatter = new PromptAutoformatter(
-      "/repo",
-      fallbackConfig,
-      runner,
-      { commandProbe: probe },
-    );
+    const formatter = new PromptAutoformatter("/repo", fallbackConfig, runner, {
+      commandProbe: probe,
+    });
     formatter.addTouchedPath("/repo/a.ts");
     formatter.addTouchedPath("/repo/b.tsx");
     formatter.addTouchedPath("/repo/c.js");

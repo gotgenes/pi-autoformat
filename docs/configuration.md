@@ -279,6 +279,12 @@ If an extension has no `chains` entry, `pi-autoformat` does not run any formatte
 
 The chain order is explicit and should be preserved.
 
+A chain entry is an array of *steps*.
+Each step is one of:
+
+- a formatter name (string) — runs that formatter (current behavior).
+- a fallback group (`{ "fallback": [name, name, ...] }`) — runs the first listed formatter whose command is on `PATH`.
+
 Example:
 
 ```json
@@ -290,6 +296,65 @@ Example:
   }
 }
 ```
+
+Fallback example:
+
+```json
+{
+  "chains": {
+    ".ts": [{ "fallback": ["biome", "prettier"] }],
+    ".tsx": [{ "fallback": ["biome", "prettier"] }],
+    ".md": [
+      { "fallback": ["biome", "prettier"] },
+      "markdownlint-cli2"
+    ]
+  }
+}
+```
+
+#### Fallback semantics
+
+The only fallthrough trigger is **command not found in `PATH`**.
+Non-zero exit codes are treated as real failures and surfaced — they are
+not masked by trying the next alternative.
+
+| Outcome of formatter N in the group | Behavior                                              |
+| ----------------------------------- | ----------------------------------------------------- |
+| Command not on `PATH`               | Skip, try N+1                                         |
+| Command runs, exits 0               | Success, stop the group                               |
+| Command runs, exits non-zero        | Failure, stop the group, report                       |
+| All formatters missing from `PATH`  | Group is a no-op (no batch run emitted)               |
+
+The `PATH` probe is cached per flush, so the same command is probed at
+most once across a single agent turn even when many extensions share
+the same fallback group.
+
+When a non-first alternative wins, the formatter name in success and
+failure summaries is annotated with which earlier alternatives were
+skipped (e.g. `prettier (fallback after biome unavailable)`).
+
+#### Choosing a chain strategy
+
+Prefer **project-level** `chains` over relying on global fallback.
+Global `chains` are convenient defaults, but become ambiguous in
+repositories that use multiple alternative tools.
+A project-level `chains` declaration in
+`.pi/extensions/pi-autoformat/config.json` is explicit, predictable,
+and survives team handoffs.
+
+Treat global fallback (`[{ "fallback": ["biome", "prettier"] }]`) as a
+"what to do when no project config has opinions" backstop — useful for
+ad-hoc repos, not load-bearing for projects you maintain.
+
+#### Fallback caveat
+
+Fallback chooses the first formatter whose command is on `PATH`.
+It does **not** check whether the tool has a project config to apply.
+A globally installed Biome will win a `[biome, prettier]` fallback even
+in repos that use Prettier — and Biome will format the file with its
+built-in defaults.
+If both alternatives are realistic in your environment, declare a
+project-level chain to disambiguate.
 
 ## Merge behavior
 

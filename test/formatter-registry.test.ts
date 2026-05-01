@@ -107,10 +107,7 @@ describe("groupFilesByChain", () => {
       chains: {
         ".ts": [{ fallback: ["biome", "prettier"] }],
         ".tsx": [{ fallback: ["biome", "prettier"] }],
-        ".md": [
-          { fallback: ["biome", "prettier"] },
-          "markdownlint-cli2",
-        ],
+        ".md": [{ fallback: ["biome", "prettier"] }, "markdownlint-cli2"],
       },
     };
 
@@ -282,9 +279,7 @@ describe("resolveChainSteps", () => {
     );
     expect(resolved).toHaveLength(1);
     if (resolved[0]?.kind === "fallback") {
-      expect(resolved[0].alternatives.map((a) => a.name)).toEqual([
-        "prettier",
-      ]);
+      expect(resolved[0].alternatives.map((a) => a.name)).toEqual(["prettier"]);
     }
   });
 

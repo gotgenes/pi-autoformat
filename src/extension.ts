@@ -314,9 +314,7 @@ function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
   return { lines, failedBatchCount };
 }
 
-function summarizeFallbackUsages(
-  result: PromptAutoformatterResult,
-): string[] {
+function summarizeFallbackUsages(result: PromptAutoformatterResult): string[] {
   const lines: string[] = [];
   for (const group of result.groups) {
     for (const run of group.runs) {

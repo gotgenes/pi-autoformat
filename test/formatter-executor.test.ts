@@ -29,13 +29,14 @@ function singleStep(formatter: ResolvedFormatter): ResolvedChainStep {
   return { kind: "single", formatter };
 }
 
-function fallbackStep(
-  alternatives: ResolvedFormatter[],
-): ResolvedChainStep {
+function fallbackStep(alternatives: ResolvedFormatter[]): ResolvedChainStep {
   return { kind: "fallback", alternatives };
 }
 
-const chain: ResolvedChainStep[] = [singleStep(prettier), singleStep(markdownlint)];
+const chain: ResolvedChainStep[] = [
+  singleStep(prettier),
+  singleStep(markdownlint),
+];
 
 describe("executeChainGroup (single steps)", () => {
   it("runs each step once with all files appended as trailing args", async () => {
