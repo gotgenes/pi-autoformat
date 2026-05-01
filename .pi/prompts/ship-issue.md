@@ -5,6 +5,14 @@ description: Push, close a GitHub issue with a summary, and merge the release-pl
 
 Argument: `$1` is the issue number that was just implemented.
 
+## 0. Sync with remote
+
+Before pushing, make sure local `HEAD` is current with the remote:
+
+1. Run `git pull --ff-only`.
+2. If it fails for **any** reason — uncommitted changes, divergent history, merge conflict, network error, detached HEAD — stop immediately and report the failure to the user. Do not attempt to stash, rebase, force, or otherwise resolve.
+3. Only proceed once the pull reports a clean fast-forward (or `Already up to date.`).
+
 ## 1. Push
 
 - Determine the current branch (`git branch --show-current`).
@@ -48,7 +56,7 @@ gh issue close $1 --comment "<the summary above>"
   - `gh pr view <num> --json mergeable,mergeStateStatus,title` — confirm `MERGEABLE` and `CLEAN`.
   - Note: release-please PRs typically have **no CI runs** because PRs created by the default `GITHUB_TOKEN` do not trigger workflows. This is expected; do not block on it.
   - `gh pr merge <num> --rebase`.
-  - `git pull --ff-only` to pick up the release commit and any tag.
+  - `git pull --ff-only` to pick up the release commit and any tag. If this pull fails, stop and report — same rules as step 0.
 
 If the release-please PR is in any state other than `CLEAN`/`MERGEABLE`, stop and report — let the user decide.
 

@@ -7,6 +7,14 @@ Issue number: `$1`
 
 Your job is to produce a numbered implementation plan at `docs/plans/NNNN-<slug>.md` for issue #$1, then commit it. Stop after the commit. Do **not** start implementation — the next step is `/tdd-plan`.
 
+## Sync with remote (do this first)
+
+Before reading anything, make sure the working tree is up to date with the remote so the plan is written against current `main`:
+
+1. Run `git pull --ff-only`.
+2. If it fails for **any** reason — uncommitted changes, divergent history, merge conflict, network error, detached HEAD — stop immediately and report the failure to the user. Do not attempt to stash, rebase, force, or otherwise resolve.
+3. Only proceed once the pull reports a clean fast-forward (or `Already up to date.`).
+
 ## Gather context (do this first, in parallel where possible)
 
 1. Run `gh issue view $1` to read the issue body and labels.

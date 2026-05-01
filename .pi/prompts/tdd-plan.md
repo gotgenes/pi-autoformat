@@ -5,6 +5,14 @@ description: Execute the TDD steps from a docs/plans/ plan as red→green→comm
 
 Argument: `$1` is either a plan path, an issue number, or empty (use the most recently modified plan).
 
+## Sync with remote (do this first)
+
+Before locating or reading the plan, make sure the working tree is up to date with the remote:
+
+1. Run `git pull --ff-only`.
+2. If it fails for **any** reason — uncommitted changes, divergent history, merge conflict, network error, detached HEAD — stop immediately and report the failure to the user. Do not attempt to stash, rebase, force, or otherwise resolve.
+3. Only proceed once the pull reports a clean fast-forward (or `Already up to date.`).
+
 ## Locate the plan
 
 - If `$1` looks like a path, use it.
