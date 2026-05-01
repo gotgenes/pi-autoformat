@@ -25,7 +25,8 @@ import { join, resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const piAvailable = spawnSync("pi", ["--help"], { stdio: "ignore" }).status === 0;
+const piAvailable =
+  spawnSync("pi", ["--help"], { stdio: "ignore" }).status === 0;
 const describeIfPi = piAvailable ? describe : describe.skip;
 
 const EXTENSION_PATH = resolve(__dirname, "..", "src", "extension.ts");
@@ -42,7 +43,11 @@ async function runRpcSession(
   cwd: string,
   commands: object[],
   timeoutMs = 10_000,
-): Promise<{ responses: RpcResponse[]; stderr: string; exitCode: number | null }> {
+): Promise<{
+  responses: RpcResponse[];
+  stderr: string;
+  exitCode: number | null;
+}> {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(
       "pi",

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type CustomMutationToolSpec,
   createCustomToolHandler,
   createCustomToolHandlers,
-  type CustomMutationToolSpec,
   extractPathsFromInput,
   parseTouchedPayload,
 } from "../src/custom-mutation-tools.js";
@@ -31,9 +31,7 @@ describe("extractPathsFromInput", () => {
   });
 
   it("returns an empty array when an intermediate path segment is missing", () => {
-    expect(
-      extractPathsFromInput({}, { pathField: "args.target" }),
-    ).toEqual([]);
+    expect(extractPathsFromInput({}, { pathField: "args.target" })).toEqual([]);
   });
 
   it("does not coerce non-string scalar values", () => {
@@ -53,10 +51,7 @@ describe("extractPathsFromInput", () => {
     // A tool whose field is sometimes a string and sometimes a string[] should
     // not require switching keys.
     expect(
-      extractPathsFromInput(
-        { path: ["a.ts", "b.ts"] },
-        { pathField: "path" },
-      ),
+      extractPathsFromInput({ path: ["a.ts", "b.ts"] }, { pathField: "path" }),
     ).toEqual(["a.ts", "b.ts"]);
   });
 
@@ -111,9 +106,9 @@ describe("createCustomToolHandler", () => {
     };
     const handler = createCustomToolHandler(spec);
 
-    expect(
-      handler("mcp_files_write", { path: "src/index.ts" }, ""),
-    ).toEqual(["src/index.ts"]);
+    expect(handler("mcp_files_write", { path: "src/index.ts" }, "")).toEqual([
+      "src/index.ts",
+    ]);
   });
 
   it("returns an empty array when the toolName does not match", () => {
@@ -168,9 +163,10 @@ describe("parseTouchedPayload", () => {
   });
 
   it("drops non-string entries from paths", () => {
-    expect(
-      parseTouchedPayload({ paths: ["a.ts", 1, null, "b.ts"] }),
-    ).toEqual(["a.ts", "b.ts"]);
+    expect(parseTouchedPayload({ paths: ["a.ts", 1, null, "b.ts"] })).toEqual([
+      "a.ts",
+      "b.ts",
+    ]);
   });
 
   it("ignores empty-string paths", () => {

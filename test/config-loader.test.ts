@@ -231,6 +231,69 @@ describe("loadAutoformatConfig", () => {
     });
   });
 
+  it("loads customMutationTools and eventBusMutationChannel settings", () => {
+    const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
+    const cwd = join(root, "project");
+    const agentDir = join(root, "agent");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(agentDir, { recursive: true });
+
+    mkdirSync(join(agentDir, "extensions", "pi-autoformat"), {
+      recursive: true,
+    });
+    writeFileSync(
+      getGlobalConfigPath(agentDir),
+      JSON.stringify({
+        customMutationTools: [{ toolName: "global_tool", pathField: "path" }],
+        eventBusMutationChannel: { enabled: false },
+      }),
+    );
+
+    mkdirSync(join(cwd, ".pi", "extensions", "pi-autoformat"), {
+      recursive: true,
+    });
+    writeFileSync(
+      getProjectConfigPath(cwd),
+      JSON.stringify({
+        customMutationTools: [
+          { toolName: "mcp_files_write", pathField: "path" },
+          { toolName: "codemod", pathFields: ["target", "extras"] },
+        ],
+        eventBusMutationChannel: { channel: "custom:channel" },
+      }),
+    );
+
+    const result = loadAutoformatConfig({ cwd, agentDir });
+
+    expect(result.issues).toEqual([]);
+    // Project replaces global wholesale for the array.
+    expect(result.config.customMutationTools).toEqual([
+      { toolName: "mcp_files_write", pathField: "path" },
+      { toolName: "codemod", pathFields: ["target", "extras"] },
+    ]);
+    // Scalar fields merge: project channel wins, global enabled persists.
+    expect(result.config.eventBusMutationChannel).toEqual({
+      enabled: false,
+      channel: "custom:channel",
+    });
+  });
+
+  it("defaults customMutationTools to [] and eventBusMutationChannel to enabled", () => {
+    const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
+    const cwd = join(root, "project");
+    const agentDir = join(root, "agent");
+    mkdirSync(cwd, { recursive: true });
+    mkdirSync(agentDir, { recursive: true });
+
+    const result = loadAutoformatConfig({ cwd, agentDir });
+
+    expect(result.config.customMutationTools).toEqual([]);
+    expect(result.config.eventBusMutationChannel).toEqual({
+      enabled: true,
+      channel: "autoformat:touched",
+    });
+  });
+
   it("reports parse and validation errors without throwing", () => {
     const root = mkdtempSync(join(tmpdir(), "pi-autoformat-config-"));
     const cwd = join(root, "project");
@@ -259,5 +322,169 @@ describe("loadAutoformatConfig", () => {
     expect(result.issues).toHaveLength(2);
     expect(result.issues[0]?.sourcePath).toBe(getGlobalConfigPath(agentDir));
     expect(result.issues[1]?.path).toBe("hideSummariesInTui");
+  });
+});
+
+describe("validateUserFormatterConfig: customMutationTools", () => {
+  it("accepts entries with pathField or pathFields", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "a", pathField: "path" },
+        { toolName: "b", pathFields: ["target", "args.extra"] },
+      ],
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.customMutationTools).toEqual([
+      { toolName: "a", pathField: "path" },
+      { toolName: "b", pathFields: ["target", "args.extra"] },
+    ]);
+  });
+
+  it("rejects built-in tool names", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "write", pathField: "path" },
+        { toolName: "bash", pathField: "path" },
+        { toolName: "grep", pathField: "pattern" },
+      ],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0].toolName",
+      "customMutationTools[1].toolName",
+      "customMutationTools[2].toolName",
+    ]);
+    expect(result.config.customMutationTools).toBeUndefined();
+  });
+
+  it("rejects duplicate toolName entries", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "dup", pathField: "a" },
+        { toolName: "dup", pathField: "b" },
+      ],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[1].toolName",
+    ]);
+  });
+
+  it("rejects entries with both pathField and pathFields", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "x", pathField: "a", pathFields: ["b"] },
+      ],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0]",
+    ]);
+  });
+
+  it("rejects entries with neither pathField nor pathFields", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [{ toolName: "x" }],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0]",
+    ]);
+  });
+
+  it("rejects empty or non-string dotted paths", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [
+        { toolName: "a", pathField: "" },
+        { toolName: "b", pathFields: ["valid", ""] },
+        { toolName: "c", pathFields: [42] },
+      ],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0].pathField",
+      "customMutationTools[1].pathFields[1]",
+      "customMutationTools[2].pathFields[0]",
+    ]);
+  });
+
+  it("rejects non-array customMutationTools", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: { toolName: "x", pathField: "path" },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual(["customMutationTools"]);
+  });
+
+  it("rejects empty toolName", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [{ toolName: "", pathField: "path" }],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0].toolName",
+    ]);
+  });
+
+  it("rejects unknown properties on entries", () => {
+    const result = validateUserFormatterConfig({
+      customMutationTools: [{ toolName: "x", pathField: "path", weird: true }],
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "customMutationTools[0].weird",
+    ]);
+  });
+});
+
+describe("validateUserFormatterConfig: eventBusMutationChannel", () => {
+  it("accepts enabled and channel fields", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: {
+        enabled: false,
+        channel: "my:channel",
+      },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.eventBusMutationChannel).toEqual({
+      enabled: false,
+      channel: "my:channel",
+    });
+  });
+
+  it("accepts a partial config (just enabled)", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: { enabled: true },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.eventBusMutationChannel).toEqual({ enabled: true });
+  });
+
+  it("rejects non-object values", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: "yes",
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "eventBusMutationChannel",
+    ]);
+  });
+
+  it("rejects non-boolean enabled", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: { enabled: "yes" },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "eventBusMutationChannel.enabled",
+    ]);
+  });
+
+  it("rejects empty / non-string channel", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: { channel: "" },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "eventBusMutationChannel.channel",
+    ]);
+  });
+
+  it("rejects unknown properties", () => {
+    const result = validateUserFormatterConfig({
+      eventBusMutationChannel: { enabled: true, weird: 1 },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "eventBusMutationChannel.weird",
+    ]);
   });
 });

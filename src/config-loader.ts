@@ -2,14 +2,30 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import type { CustomMutationToolSpec } from "./custom-mutation-tools.js";
 import type { FormatScopeSetting } from "./format-scope.js";
 import {
   type AutoformatConfig,
   createFormatterConfig,
+  type EventBusMutationChannelConfig,
   type FormatMode,
   type UserFormatterConfig,
 } from "./formatter-config.js";
 import type { FormatterDefinition } from "./formatter-registry.js";
+
+// Pi's built-in tool names. Declaring any of these in customMutationTools is
+// a configuration mistake: write/edit are already covered, bash has its own
+// detection path (see plan 0004), and the rest do not mutate files.
+const BUILTIN_TOOL_NAMES = new Set([
+  "bash",
+  "edit",
+  "write",
+  "read",
+  "grep",
+  "find",
+  "ls",
+]);
+
 import type {
   ShellMutationDetectionConfig,
   WrapperConfig,
@@ -558,6 +574,225 @@ function validateShellMutationDetection(
   return result;
 }
 
+function validateCustomMutationToolEntry(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath: string | undefined,
+  seenToolNames: Set<string>,
+): CustomMutationToolSpec | undefined {
+  if (!isRecord(value)) {
+    pushIssue(issues, fieldPath, "Expected an object.", sourcePath);
+    return undefined;
+  }
+
+  let toolName: string | undefined;
+  let pathField: string | undefined;
+  let pathFields: string[] | undefined;
+  let hasUnknown = false;
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "toolName") {
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          `${fieldPath}.toolName`,
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      if (BUILTIN_TOOL_NAMES.has(entry)) {
+        pushIssue(
+          issues,
+          `${fieldPath}.toolName`,
+          `"${entry}" is a Pi built-in tool and cannot be declared as a custom mutation tool. Built-in mutating tools (write, edit) are already covered; others do not mutate files.`,
+          sourcePath,
+        );
+        return undefined;
+      }
+      if (seenToolNames.has(entry)) {
+        pushIssue(
+          issues,
+          `${fieldPath}.toolName`,
+          `Duplicate toolName "${entry}". Each tool may only be declared once.`,
+          sourcePath,
+        );
+        return undefined;
+      }
+      toolName = entry;
+      continue;
+    }
+
+    if (key === "pathField") {
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          `${fieldPath}.pathField`,
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      pathField = entry;
+      continue;
+    }
+
+    if (key === "pathFields") {
+      if (!Array.isArray(entry) || entry.length === 0) {
+        pushIssue(
+          issues,
+          `${fieldPath}.pathFields`,
+          "Expected a non-empty array of strings.",
+          sourcePath,
+        );
+        return undefined;
+      }
+      const collected: string[] = [];
+      for (let index = 0; index < entry.length; index += 1) {
+        const item = entry[index];
+        if (typeof item !== "string" || item.length === 0) {
+          pushIssue(
+            issues,
+            `${fieldPath}.pathFields[${index}]`,
+            "Expected a non-empty string.",
+            sourcePath,
+          );
+          return undefined;
+        }
+        collected.push(item);
+      }
+      pathFields = collected;
+      continue;
+    }
+
+    pushIssue(issues, `${fieldPath}.${key}`, "Unknown property.", sourcePath);
+    hasUnknown = true;
+  }
+
+  if (hasUnknown) {
+    return undefined;
+  }
+
+  if (!toolName) {
+    pushIssue(
+      issues,
+      `${fieldPath}.toolName`,
+      "Missing required property.",
+      sourcePath,
+    );
+    return undefined;
+  }
+
+  const hasField = pathField !== undefined;
+  const hasFields = pathFields !== undefined;
+  if (hasField === hasFields) {
+    pushIssue(
+      issues,
+      fieldPath,
+      "Expected exactly one of `pathField` or `pathFields`.",
+      sourcePath,
+    );
+    return undefined;
+  }
+
+  seenToolNames.add(toolName);
+  return pathField !== undefined
+    ? { toolName, pathField }
+    : { toolName, pathFields: pathFields as string[] };
+}
+
+function validateCustomMutationTools(
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): CustomMutationToolSpec[] | undefined {
+  if (!Array.isArray(value)) {
+    pushIssue(
+      issues,
+      "customMutationTools",
+      "Expected an array of mutation tool specs.",
+      sourcePath,
+    );
+    return undefined;
+  }
+
+  const seenToolNames = new Set<string>();
+  const collected: CustomMutationToolSpec[] = [];
+  let hasError = false;
+  for (let index = 0; index < value.length; index += 1) {
+    const entry = validateCustomMutationToolEntry(
+      `customMutationTools[${index}]`,
+      value[index],
+      issues,
+      sourcePath,
+      seenToolNames,
+    );
+    if (!entry) {
+      hasError = true;
+      continue;
+    }
+    collected.push(entry);
+  }
+
+  if (hasError) {
+    return undefined;
+  }
+  return collected;
+}
+
+function validateEventBusMutationChannel(
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): Partial<EventBusMutationChannelConfig> | undefined {
+  if (!isRecord(value)) {
+    pushIssue(
+      issues,
+      "eventBusMutationChannel",
+      "Expected an object.",
+      sourcePath,
+    );
+    return undefined;
+  }
+
+  const result: Partial<EventBusMutationChannelConfig> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "enabled") {
+      const enabled = validateBooleanField(
+        "eventBusMutationChannel.enabled",
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (enabled !== undefined) {
+        result.enabled = enabled;
+      }
+      continue;
+    }
+    if (key === "channel") {
+      if (typeof entry !== "string" || entry.length === 0) {
+        pushIssue(
+          issues,
+          "eventBusMutationChannel.channel",
+          "Expected a non-empty string.",
+          sourcePath,
+        );
+        continue;
+      }
+      result.channel = entry;
+      continue;
+    }
+    pushIssue(
+      issues,
+      `eventBusMutationChannel.${key}`,
+      "Unknown property.",
+      sourcePath,
+    );
+  }
+  return result;
+}
+
 function validateConfigObject(
   value: unknown,
   sourcePath?: string,
@@ -647,6 +882,26 @@ function validateConfigObject(
       continue;
     }
 
+    if (key === "customMutationTools") {
+      const tools = validateCustomMutationTools(entry, issues, sourcePath);
+      if (tools !== undefined) {
+        config.customMutationTools = tools;
+      }
+      continue;
+    }
+
+    if (key === "eventBusMutationChannel") {
+      const channel = validateEventBusMutationChannel(
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (channel !== undefined) {
+        config.eventBusMutationChannel = channel;
+      }
+      continue;
+    }
+
     pushIssue(issues, key, "Unknown top-level property.", sourcePath);
   }
 
@@ -681,6 +936,13 @@ function mergeUserConfigs(
       base.shellMutationDetection,
       overrides.shellMutationDetection,
     ),
+    // Arrays replace wholesale (consistent with formatScope, snapshotGlobs).
+    customMutationTools:
+      overrides.customMutationTools ?? base.customMutationTools,
+    eventBusMutationChannel: mergeEventBusMutationChannel(
+      base.eventBusMutationChannel,
+      overrides.eventBusMutationChannel,
+    ),
     formatters: {
       ...base.formatters,
       ...overrides.formatters,
@@ -690,6 +952,16 @@ function mergeUserConfigs(
       ...overrides.chains,
     },
   };
+}
+
+function mergeEventBusMutationChannel(
+  base: Partial<EventBusMutationChannelConfig> | undefined,
+  overrides: Partial<EventBusMutationChannelConfig> | undefined,
+): Partial<EventBusMutationChannelConfig> | undefined {
+  if (!base && !overrides) {
+    return undefined;
+  }
+  return { ...(base ?? {}), ...(overrides ?? {}) };
 }
 
 function mergeShellMutationDetection(
