@@ -74,12 +74,10 @@ Example:
   "hideSummariesInTui": false,
   "formatters": {
     "prettier": {
-      "command": ["prettier", "--write"],
-      "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
+      "command": ["prettier", "--write"]
     },
     "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix"],
-      "extensions": [".md"]
+      "command": ["markdownlint-cli2", "--fix"]
     }
   },
   "chains": {
@@ -118,9 +116,12 @@ Set `hideSummariesInTui` to `true` if you want to suppress interactive success s
 Each formatter entry can define:
 
 - `command: string[]`
-- `extensions: string[]`
 - `environment?: Record<string, string>`
 - `disabled?: boolean`
+
+The legacy `extensions: string[]` field has been removed.
+Dispatch is driven entirely by `chains`.
+On-disk configs that still carry `extensions` continue to load but emit a one-line deprecation notice.
 
 Touched file paths are appended to `command` as trailing arguments; each chain step runs once per group of files that share the same chain.
 Do not include `$FILE` in `command` — it is rejected at config-load time.

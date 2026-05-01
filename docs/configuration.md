@@ -32,12 +32,10 @@ Latest:
   "hideSummariesInTui": false,
   "formatters": {
     "prettier": {
-      "command": ["prettier", "--write"],
-      "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
+      "command": ["prettier", "--write"]
     },
     "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix"],
-      "extensions": [".md"]
+      "command": ["markdownlint-cli2", "--fix"]
     }
   },
   "chains": {
@@ -231,9 +229,15 @@ Formatter registry keyed by formatter name.
 Each formatter can define:
 
 - `command: string[]`
-- `extensions: string[]`
 - `environment?: Record<string, string>`
 - `disabled?: boolean`
+
+> **Deprecated:** earlier versions accepted an `extensions: string[]`
+> field on each formatter. It was never read by dispatch and has been
+> removed. The loader still accepts on-disk configs that carry it but
+> emits a single deprecation notice and ignores the value — remove
+> `extensions` from your formatter entries and rely on `chains` to
+> declare which extensions a formatter runs against.
 
 **Batch dispatch.** Touched file paths are appended to `command` as
 trailing arguments. The executor runs each formatter once per chain
@@ -254,12 +258,10 @@ Example:
 {
   "formatters": {
     "prettier": {
-      "command": ["pnpm", "exec", "prettier", "--write"],
-      "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
+      "command": ["pnpm", "exec", "prettier", "--write"]
     },
     "markdownlint-cli2": {
       "command": ["pnpm", "exec", "markdownlint-cli2", "--fix"],
-      "extensions": [".md"],
       "environment": {
         "CI": "1"
       }
