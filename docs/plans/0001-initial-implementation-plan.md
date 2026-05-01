@@ -2,7 +2,8 @@
 
 ## Problem Statement
 
-Pi agents frequently modify files that later fail commit-time hooks because formatting was not run after editing. This is especially painful for formatters that mutate files, such as Prettier and Markdown lint fixers.
+Pi agents frequently modify files that later fail commit-time hooks because formatting was not run after editing.
+This is especially painful for formatters that mutate files, such as Prettier and Markdown lint fixers.
 
 In practice, this creates a bad workflow:
 
@@ -339,17 +340,9 @@ Status update:
 
 - session mode — implemented (flush on `session_shutdown`)
 - tool mode — implemented
-- support for more mutation tools — implemented via `customMutationTools`
-  config; arbitrary tool names with dotted `pathField` / `pathFields` specs
-  feed the touched-files queue.
-- shell mutation integration strategy — implemented per
-  [docs/plans/0004-shell-driven-mutation-coverage.md](./0004-shell-driven-mutation-coverage.md)
-  with three opt-in strategies (argument parsing, snapshot tracking,
-  user-declared wrappers) plus a uniform `formatScope` boundary.
-- EventBus integration — implemented via `eventBusMutationChannel`
-  (default `autoformat:touched`); peer extensions can publish
-  `{ path }` or `{ paths }` payloads to opt their own mutations into the
-  formatter pipeline.
+- support for more mutation tools — implemented via `customMutationTools` config; arbitrary tool names with dotted `pathField` / `pathFields` specs feed the touched-files queue.
+- shell mutation integration strategy — implemented per [docs/plans/0004-shell-driven-mutation-coverage.md](./0004-shell-driven-mutation-coverage.md) with three opt-in strategies (argument parsing, snapshot tracking, user-declared wrappers) plus a uniform `formatScope` boundary.
+- EventBus integration — implemented via `eventBusMutationChannel` (default `autoformat:touched`); peer extensions can publish `{ path }` or `{ paths }` payloads to opt their own mutations into the formatter pipeline.
 - optional settings command / config editor UI — not yet started.
 
 ## Remaining Work Summary
@@ -386,13 +379,10 @@ Mitigation:
 
 Mitigation:
 
-- shipped opt-in shell mutation detection with three explicit strategies
-  (see plan 0004)
+- shipped opt-in shell mutation detection with three explicit strategies (see plan 0004)
 - exposed `customMutationTools` for project-specific tool names
-- exposed `eventBusMutationChannel` so peer extensions can contribute
-  touched files without us modeling their tools
-- all mutation sources funnel through the same `TouchedFilesQueue` and
-  `formatScope` filter, keeping behavior auditable
+- exposed `eventBusMutationChannel` so peer extensions can contribute touched files without us modeling their tools
+- all mutation sources funnel through the same `TouchedFilesQueue` and `formatScope` filter, keeping behavior auditable
 
 ### Risk: formatter failures become invisible
 

@@ -1,11 +1,6 @@
 # pi-autoformat
 
-[![npm version](https://img.shields.io/npm/v/@gotgenes/pi-autoformat?style=flat&logo=npm&logoColor=white)](https://www.npmjs.com/package/@gotgenes/pi-autoformat)
-[![CI](https://img.shields.io/github/actions/workflow/status/gotgenes/pi-autoformat/ci.yml?style=flat&logo=github&label=CI)](https://github.com/gotgenes/pi-autoformat/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-%3E%3D10-F69220?style=flat&logo=pnpm&logoColor=white)](https://pnpm.io/)
-[![Pi Package](https://img.shields.io/badge/Pi-Package-6366F1?style=flat)](https://pi.mariozechner.at/)
+[![npm version](https://img.shields.io/npm/v/@gotgenes/pi-autoformat?style=flat&logo=npm&logoColor=white)](https://www.npmjs.com/package/@gotgenes/pi-autoformat) [![CI](https://img.shields.io/github/actions/workflow/status/gotgenes/pi-autoformat/ci.yml?style=flat&logo=github&label=CI)](https://github.com/gotgenes/pi-autoformat/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat)](https://opensource.org/licenses/MIT) [![TypeScript](https://img.shields.io/badge/TypeScript-6.x-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![pnpm](https://img.shields.io/badge/pnpm-%3E%3D10-F69220?style=flat&logo=pnpm&logoColor=white)](https://pnpm.io/) [![Pi Package](https://img.shields.io/badge/Pi-Package-6366F1?style=flat)](https://pi.mariozechner.at/)
 
 `pi-autoformat` is a Pi extension package that automatically formats files after the agent edits them.
 
@@ -127,10 +122,8 @@ Each formatter entry can define:
 - `environment?: Record<string, string>`
 - `disabled?: boolean`
 
-Touched file paths are appended to `command` as trailing arguments;
-each chain step runs once per group of files that share the same
-chain. Do not include `$FILE` in `command` — it is rejected at
-config-load time.
+Touched file paths are appended to `command` as trailing arguments; each chain step runs once per group of files that share the same chain.
+Do not include `$FILE` in `command` — it is rejected at config-load time.
 
 Chains are configured separately so formatter order is explicit.
 
@@ -177,51 +170,37 @@ Known v1 limitations:
 
 ## Format scope
 
-Paths outside the configured `formatScope` are silently dropped from the
-touched-files queue. The default scope is the Git toplevel detected via
-`git rev-parse --show-toplevel`, with a fallback to `cwd` when not in a Git
-repo. Set `formatScope` to `"cwd"` for a strict cwd subtree, or to an array
-of paths for an explicit allowlist. Symlinks are resolved on both sides so
-workspace deps that link out of the scope are correctly excluded.
+Paths outside the configured `formatScope` are silently dropped from the touched-files queue.
+The default scope is the Git toplevel detected via `git rev-parse --show-toplevel`, with a fallback to `cwd` when not in a Git repo.
+Set `formatScope` to `"cwd"` for a strict cwd subtree, or to an array of paths for an explicit allowlist.
+Symlinks are resolved on both sides so workspace deps that link out of the scope are correctly excluded.
 
-This is a tightening of v1 behavior: previously `write` / `edit` would
-format any path the agent supplied. The new default closes a latent gap and
-is almost certainly what users already expect; configure `formatScope`
-explicitly if you need a broader allowlist.
+This is a tightening of v1 behavior: previously `write` / `edit` would format any path the agent supplied.
+The new default closes a latent gap and is almost certainly what users already expect; configure `formatScope` explicitly if you need a broader allowlist.
 
 ## Shell mutation coverage
 
-Files modified by `bash` invocations — `sed -i`, `mv`, `cp`, `touch`, `tee`,
-redirections, codegen wrappers — are invisible to the touched-files queue
-by default. Set `shellMutationDetection.enabled` to `true` to opt in.
+Files modified by `bash` invocations — `sed -i`, `mv`, `cp`, `touch`, `tee`, redirections, codegen wrappers — are invisible to the touched-files queue by default.
+Set `shellMutationDetection.enabled` to `true` to opt in.
 
 Three explicit, low-noise strategies are available:
 
-1. **Argument parsing** (default on once detection is enabled) for a small
-   whitelist of known mutating commands. Bails on pipelines, command
-   substitutions, and unknown flags.
-2. **Snapshot tracking** of explicit globs around each `bash` invocation —
-   files whose mtime advanced are treated as touched.
-3. **User-declared wrappers** that already print the files they touched on
-   stdout (one per line).
+1. **Argument parsing** (default on once detection is enabled) for a small whitelist of known mutating commands.
+   Bails on pipelines, command substitutions, and unknown flags.
+2. **Snapshot tracking** of explicit globs around each `bash` invocation — files whose mtime advanced are treated as touched.
+3. **User-declared wrappers** that already print the files they touched on stdout (one per line).
 
 See [docs/configuration.md](docs/configuration.md) for the full configuration.
 
 ## Custom mutation tools and EventBus integration
 
-Beyond `write`, `edit`, and shell detection, two additional surfaces let
-project- and extension-specific mutations participate in the same
-prompt-end formatter pipeline:
+Beyond `write`, `edit`, and shell detection, two additional surfaces let project- and extension-specific mutations participate in the same prompt-end formatter pipeline:
 
-- `customMutationTools` — declare extra tool names the agent calls and
-  which fields in their `input` payload point at touched files. Useful for
-  codegen tools, custom refactor commands, etc.
-- `eventBusMutationChannel` — subscribe to Pi's shared event bus (default
-  channel `autoformat:touched`) and accept `{ path }` or `{ paths }`
-  payloads from peer extensions.
+- `customMutationTools` — declare extra tool names the agent calls and which fields in their `input` payload point at touched files.
+  Useful for codegen tools, custom refactor commands, etc.
+- `eventBusMutationChannel` — subscribe to Pi's shared event bus (default channel `autoformat:touched`) and accept `{ path }` or `{ paths }` payloads from peer extensions.
 
-Both feed the same touched-files queue, so scope filtering, dedupe, and
-formatter resolution behave identically to the built-in tools.
+Both feed the same touched-files queue, so scope filtering, dedupe, and formatter resolution behave identically to the built-in tools.
 
 ## Development
 
