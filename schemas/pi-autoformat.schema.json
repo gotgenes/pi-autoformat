@@ -98,7 +98,7 @@
     },
     "chains": {
       "type": "object",
-      "description": "Ordered formatter chains keyed by file extension.",
+      "description": "Ordered formatter chains keyed by file extension. Each step is either a formatter name (string) or a fallback group ({ \"fallback\": [name, ...] }) that runs the first listed formatter whose command is found on PATH.",
       "propertyNames": {
         "type": "string",
         "pattern": "^\\..+"
@@ -106,8 +106,29 @@
       "additionalProperties": {
         "type": "array",
         "items": {
-          "type": "string",
-          "minLength": 1
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "description": "Single formatter name."
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["fallback"],
+              "description": "Fallback group: the first formatter whose command is on PATH runs. Non-zero exit codes are not masked by falling through.",
+              "properties": {
+                "fallback": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          ]
         }
       }
     }
