@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.4.0](https://github.com/gotgenes/pi-autoformat/compare/v0.3.1...v0.4.0) (2026-05-01)
+
+
+### Features
+
+* **config:** add customMutationTools and eventBusMutationChannel schema ([f2a3ac4](https://github.com/gotgenes/pi-autoformat/commit/f2a3ac4b5579270a5938401b3e4b8418550fbe0a))
+* extract touched paths from declared custom tool inputs ([665aaed](https://github.com/gotgenes/pi-autoformat/commit/665aaed00d322f40354cb2990e2bcb3ff89ed2c6))
+* subscribe to EventBus channel for peer-emitted touched files ([8986535](https://github.com/gotgenes/pi-autoformat/commit/898653575f5b4a48b506af05b5c17e363c404555))
+* wire customMutationTools into default autoformatter ([638f203](https://github.com/gotgenes/pi-autoformat/commit/638f2031ed556d369d223acdcb27006d8c649fa8))
+
+
+### Documentation
+
+* add plan for additional Pi mutation tools ([5c3fb35](https://github.com/gotgenes/pi-autoformat/commit/5c3fb35d30dd8a8a757d69533eb280a8d798ec89))
+* capture design philosophy in AGENTS.md and README design goals ([e318d1b](https://github.com/gotgenes/pi-autoformat/commit/e318d1bd46b536f8b8d9adae435bf05ec864416a))
+* document customMutationTools and eventBusMutationChannel ([5cc7c71](https://github.com/gotgenes/pi-autoformat/commit/5cc7c713a0cbad49a5b1f5ab83afbd272495483f))
+
 ## [0.3.1](https://github.com/gotgenes/pi-autoformat/compare/v0.3.0...v0.3.1) (2026-04-29)
 
 
