@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.0.0](https://github.com/gotgenes/pi-autoformat/compare/v1.0.0...v2.0.0) (2026-05-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* `formatterDefinition.extensions` is no longer declared in schemas/pi-autoformat.schema.json. Editor validators will flag stale `extensions` keys as unknown properties. The runtime loader still tolerates them with a deprecation notice.
+* `FormatterDefinition.extensions` has been removed from the public TypeScript type and from built-in defaults. Code that reads or writes that field must be updated. On-disk configs are tolerated with a deprecation notice.
+
+### Features
+
+* drop extensions field from FormatterDefinition and loader ([3fd791e](https://github.com/gotgenes/pi-autoformat/commit/3fd791e9de7f44f863986ad55c3db94d964cdda4))
+* drop extensions from pi-autoformat JSON schema ([018c1a7](https://github.com/gotgenes/pi-autoformat/commit/018c1a776dc7fe97b4957b06874ff3391c8b26ef))
+
+
+### Documentation
+
+* add issue-driven workflow prompt templates ([14295be](https://github.com/gotgenes/pi-autoformat/commit/14295be83f5953dbbc143d0a12440f759216c5f2))
+* adopt one-sentence-per-line and code-fence language conventions ([544fc68](https://github.com/gotgenes/pi-autoformat/commit/544fc68ead478120948070d904ff9698a5aa1624))
+* plan removing unused formatter extensions field ([#12](https://github.com/gotgenes/pi-autoformat/issues/12)) ([fe0b6bd](https://github.com/gotgenes/pi-autoformat/commit/fe0b6bdfbad38d48c163b4b714e1d48dcc249a29))
+* reflow markdown to one sentence per line ([49bdefb](https://github.com/gotgenes/pi-autoformat/commit/49bdefb6ccd853e2422213854c460d405472fa7e))
+* remove formatter extensions field and note deprecation ([ddc54cd](https://github.com/gotgenes/pi-autoformat/commit/ddc54cddfdbd90b8973b21631ce555a275b895b9))
+
+
+### Miscellaneous Chores
+
+* add npm keywords including pi-package for registry ([aee15c0](https://github.com/gotgenes/pi-autoformat/commit/aee15c092e3f399d174241ed55879bcb75818b49))
+
 ## [1.0.0](https://github.com/gotgenes/pi-autoformat/compare/v0.4.0...v1.0.0) (2026-05-01)
 
 
