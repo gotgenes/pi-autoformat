@@ -20,7 +20,7 @@ describe("validateUserFormatterConfig", () => {
       hideSummariesInTui: true,
       formatters: {
         prettier: {
-          command: ["prettier", "--write", "$FILE"],
+          command: ["prettier", "--write"],
           extensions: [".TS", ".md"],
         },
       },
@@ -36,7 +36,7 @@ describe("validateUserFormatterConfig", () => {
       hideSummariesInTui: true,
       formatters: {
         prettier: {
-          command: ["prettier", "--write", "$FILE"],
+          command: ["prettier", "--write"],
           extensions: [".ts", ".md"],
         },
       },
@@ -46,6 +46,39 @@ describe("validateUserFormatterConfig", () => {
     });
   });
 
+  it("rejects formatter commands containing the legacy $FILE token", () => {
+    const result = validateUserFormatterConfig({
+      formatters: {
+        prettier: {
+          command: ["prettier", "--write", "$FILE"],
+          extensions: [".md"],
+        },
+      },
+    });
+
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        path: "formatters.prettier.command",
+        message: expect.stringContaining("$FILE"),
+      }),
+    ]);
+    expect(result.config.formatters).toEqual({});
+  });
+
+  it("rejects $FILE embedded inside a command argument", () => {
+    const result = validateUserFormatterConfig({
+      formatters: {
+        prettier: {
+          command: ["prettier", "--stdin-filepath=$FILE"],
+          extensions: [".md"],
+        },
+      },
+    });
+
+    expect(result.issues[0]?.message).toMatch(/\$FILE/);
+    expect(result.config.formatters).toEqual({});
+  });
+
   it("reports invalid fields and returns only valid fragments", () => {
     const result = validateUserFormatterConfig({
       formatMode: "later",
@@ -53,7 +86,7 @@ describe("validateUserFormatterConfig", () => {
       unexpected: true,
       formatters: {
         prettier: {
-          command: ["prettier", "--write", "$FILE"],
+          command: ["prettier", "--write"],
         },
       },
     });
@@ -104,7 +137,7 @@ describe("loadAutoformatConfig", () => {
           commandTimeoutMs: 5000,
           formatters: {
             prettier: {
-              command: ["pnpm", "exec", "prettier", "--write", "$FILE"],
+              command: ["pnpm", "exec", "prettier", "--write"],
               extensions: [".ts", ".md"],
             },
           },
@@ -128,7 +161,7 @@ describe("loadAutoformatConfig", () => {
           hideSummariesInTui: true,
           formatters: {
             "markdownlint-cli2": {
-              command: ["pnpm", "exec", "markdownlint-cli2", "--fix", "$FILE"],
+              command: ["pnpm", "exec", "markdownlint-cli2", "--fix"],
               extensions: [".md"],
             },
           },
@@ -151,14 +184,12 @@ describe("loadAutoformatConfig", () => {
       "exec",
       "prettier",
       "--write",
-      "$FILE",
     ]);
     expect(result.config.formatters["markdownlint-cli2"]?.command).toEqual([
       "pnpm",
       "exec",
       "markdownlint-cli2",
       "--fix",
-      "$FILE",
     ]);
     expect(result.config.chains[".md"]).toEqual([
       "prettier",

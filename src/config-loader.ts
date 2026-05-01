@@ -232,15 +232,32 @@ function validateFormatterDefinition(
   }
 
   const definition: Partial<FormatterDefinition> = {};
+  let commandProvided = false;
 
   for (const [key, entry] of Object.entries(value)) {
     if (key === "command") {
-      definition.command = validateStringArray(
+      commandProvided = true;
+      const command = validateStringArray(
         `${fieldPath}.command`,
         entry,
         issues,
         sourcePath,
       );
+      if (command) {
+        const offendingIndex = command.findIndex((arg) =>
+          arg.includes("$FILE"),
+        );
+        if (offendingIndex >= 0) {
+          pushIssue(
+            issues,
+            `${fieldPath}.command`,
+            "$FILE substitution is no longer supported. Remove $FILE; file paths are appended to the command automatically. See docs/configuration.md.",
+            sourcePath,
+          );
+        } else {
+          definition.command = command;
+        }
+      }
       continue;
     }
 
@@ -283,7 +300,7 @@ function validateFormatterDefinition(
   }
 
   if (!definition.command || !definition.extensions) {
-    if (!definition.command) {
+    if (!definition.command && !commandProvided) {
       pushIssue(
         issues,
         `${fieldPath}.command`,
