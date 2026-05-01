@@ -56,6 +56,25 @@ function resolveFormatterByName(
   };
 }
 
+export function resolveChain(
+  chainNames: string[],
+  config: FormatterConfig,
+): ResolvedFormatter[] {
+  const resolved: ResolvedFormatter[] = [];
+  for (const name of chainNames) {
+    const formatter = config.formatters[name];
+    if (!formatter || formatter.disabled) {
+      continue;
+    }
+    resolved.push({
+      name,
+      command: [...formatter.command],
+      environment: formatter.environment,
+    });
+  }
+  return resolved;
+}
+
 function substituteFileToken(command: string[], filePath: string): string[] {
   return command.map((arg) => arg.replaceAll("$FILE", filePath));
 }

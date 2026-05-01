@@ -2,8 +2,73 @@ import { describe, expect, it } from "vitest";
 
 import {
   type FormatterConfig,
+  resolveChain,
   resolveFormatterChainForFile,
 } from "../src/formatter-registry.js";
+
+describe("resolveChain", () => {
+  const config: FormatterConfig = {
+    formatters: {
+      prettier: {
+        command: ["prettier", "--write"],
+        extensions: [".md"],
+        environment: { PRETTIERD_DEFAULT_CONFIG: "./.prettierrc" },
+      },
+      markdownlint: {
+        command: ["markdownlint-cli2", "--fix"],
+        extensions: [".md"],
+      },
+      disabled: {
+        command: ["never"],
+        extensions: [".md"],
+        disabled: true,
+      },
+    },
+    chains: {},
+  };
+
+  it("resolves formatters in declared order", () => {
+    const resolved = resolveChain(["prettier", "markdownlint"], config);
+
+    expect(resolved.map((entry) => entry.name)).toEqual([
+      "prettier",
+      "markdownlint",
+    ]);
+  });
+
+  it("returns the configured command verbatim (no $FILE substitution)", () => {
+    const resolved = resolveChain(["prettier"], config);
+
+    expect(resolved[0]?.command).toEqual(["prettier", "--write"]);
+  });
+
+  it("propagates the formatter environment", () => {
+    const resolved = resolveChain(["prettier"], config);
+
+    expect(resolved[0]?.environment).toEqual({
+      PRETTIERD_DEFAULT_CONFIG: "./.prettierrc",
+    });
+  });
+
+  it("skips disabled formatters", () => {
+    const resolved = resolveChain(["prettier", "disabled", "markdownlint"], config);
+
+    expect(resolved.map((entry) => entry.name)).toEqual([
+      "prettier",
+      "markdownlint",
+    ]);
+  });
+
+  it("skips unknown formatter names", () => {
+    const resolved = resolveChain(["prettier", "nonexistent"], config);
+
+    expect(resolved.map((entry) => entry.name)).toEqual(["prettier"]);
+  });
+
+  it("returns an empty array for an empty chain", () => {
+    expect(resolveChain([], config)).toEqual([]);
+  });
+});
 
 describe("resolveFormatterChainForFile", () => {
   const config: FormatterConfig = {
