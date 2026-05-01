@@ -129,4 +129,45 @@ describe("PromptAutoformatter", () => {
       exitCode: 0,
     });
   });
+
+  it("shares the PATH probe cache across all chain groups in a single flush", async () => {
+    const fallbackConfig: FormatterConfig = {
+      formatters: {
+        biome: { command: ["biome", "format", "--write"] },
+        prettier: { command: ["prettier", "--write"] },
+      },
+      chains: {
+        ".ts": [{ fallback: ["biome", "prettier"] }],
+        ".tsx": [{ fallback: ["biome", "prettier"] }],
+        // Distinct chain so a second group is created.
+        ".js": [{ fallback: ["biome", "prettier"] }, "prettier"],
+      },
+    };
+    const runner: CommandRunner = async () => ({ exitCode: 0 });
+    const probeCalls: string[] = [];
+    const probe = (cmd: string): boolean => {
+      probeCalls.push(cmd);
+      return cmd === "prettier";
+    };
+
+    const formatter = new PromptAutoformatter(
+      "/repo",
+      fallbackConfig,
+      runner,
+      { commandProbe: probe },
+    );
+    formatter.addTouchedPath("/repo/a.ts");
+    formatter.addTouchedPath("/repo/b.tsx");
+    formatter.addTouchedPath("/repo/c.js");
+
+    const result = await formatter.flushPrompt();
+    expect(result.groups.length).toBeGreaterThanOrEqual(2);
+    // Each unique command name probed at most once across the whole flush.
+    const counts = probeCalls.reduce<Record<string, number>>((acc, cmd) => {
+      acc[cmd] = (acc[cmd] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect(counts.biome ?? 0).toBeLessThanOrEqual(1);
+    expect(counts.prettier ?? 0).toBeLessThanOrEqual(1);
+  });
 });

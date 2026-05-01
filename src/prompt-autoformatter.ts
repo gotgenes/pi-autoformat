@@ -1,3 +1,8 @@
+import {
+  type CommandProbe,
+  createCachedCommandProbe,
+  defaultCommandProbe,
+} from "./command-probe.js";
 import type { FormatScope } from "./format-scope.js";
 import {
   type BatchRun,
@@ -28,10 +33,17 @@ export type PromptAutoformatterResult = {
 export type PromptAutoformatterOptions = {
   scope?: FormatScope;
   mutationHandlers?: MutationSourceHandler[];
+  /**
+   * Probe used to test whether a fallback alternative's command is on PATH.
+   * Wrapped in a per-flush cache so the same command is probed at most once
+   * per flush across all chain groups. Defaults to the synchronous PATH walker.
+   */
+  commandProbe?: CommandProbe;
 };
 
 export class PromptAutoformatter {
   private readonly queue: TouchedFilesQueue;
+  private readonly commandProbe: CommandProbe;
 
   constructor(
     private readonly cwd: string,
@@ -44,6 +56,7 @@ export class PromptAutoformatter {
       scope: options?.scope,
       handlers: options?.mutationHandlers,
     });
+    this.commandProbe = options?.commandProbe ?? defaultCommandProbe;
   }
 
   recordToolResult(toolName: string, payload: unknown, output = ""): void {
@@ -59,6 +72,11 @@ export class PromptAutoformatter {
     const fileGroups = groupFilesByChain(touchedFiles, this.config);
     const groupResults: ChainGroupResult[] = [];
 
+    // One probe cache per flush, shared across all chain groups so the same
+    // fallback command is probed at most once even when many extensions share
+    // the same fallback step.
+    const cachedProbe = createCachedCommandProbe(this.commandProbe);
+
     for (const group of fileGroups) {
       const resolved = resolveChainSteps(group.chain, this.config);
       if (resolved.length === 0) {
@@ -68,7 +86,7 @@ export class PromptAutoformatter {
       const runs = await executeChainGroup(
         { chain: resolved, files: group.files },
         this.runner,
-        { cwd: this.cwd },
+        { cwd: this.cwd, commandProbe: cachedProbe },
       );
 
       groupResults.push({
