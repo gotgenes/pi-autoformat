@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.1.0](https://github.com/gotgenes/pi-autoformat/compare/v2.0.0...v2.1.0) (2026-05-01)
+
+
+### Features
+
+* add PATH probe with per-flush cache ([aa97aa7](https://github.com/gotgenes/pi-autoformat/commit/aa97aa77a1a6070e13416290a56589fe4057f2d8))
+* allow fallback chain steps in schema ([535190e](https://github.com/gotgenes/pi-autoformat/commit/535190e83681c3be80fafe2947edbca21be27360))
+* dispatch fallback chain steps ([a263778](https://github.com/gotgenes/pi-autoformat/commit/a26377872eca7f0186aafa619a6fe3a6570298cf))
+* resolve fallback chain steps ([6daed75](https://github.com/gotgenes/pi-autoformat/commit/6daed752eaca03c5f10885055c77f027121913a8))
+* share PATH probe cache across flush ([8d0af4d](https://github.com/gotgenes/pi-autoformat/commit/8d0af4da40b16d542a374cad00cafe867d41fb5f))
+* support fallback steps in chain grouping ([f07acc5](https://github.com/gotgenes/pi-autoformat/commit/f07acc5199795fa4f4779292179ca90d0c8da919))
+* surface fallback context in flush reporting ([2159cfb](https://github.com/gotgenes/pi-autoformat/commit/2159cfbd6def3f418d14f244fc6fd8476210de66))
+* surface unknown formatter names in chains as config issues ([f46f7af](https://github.com/gotgenes/pi-autoformat/commit/f46f7afa0c82188b7089841778beffeba225dca6))
+* validate fallback chain steps in config loader ([ec52a14](https://github.com/gotgenes/pi-autoformat/commit/ec52a14574cfc3ef636b008423ad08c3b77cdaf2))
+
+
+### Documentation
+
+* document deprecation pattern for removed config fields ([988ae7b](https://github.com/gotgenes/pi-autoformat/commit/988ae7b0daed4f604354b9392bd7a89d0df36cc3))
+* document fallback chain steps and project-config recommendation ([3bbc846](https://github.com/gotgenes/pi-autoformat/commit/3bbc846701a0e0551451e81eae4540cff3b36381))
+* plan fallback chain step type ([#13](https://github.com/gotgenes/pi-autoformat/issues/13)) ([83df5ff](https://github.com/gotgenes/pi-autoformat/commit/83df5ff05587e686f9df41871f60de2057d5f79b))
+* **prompts:** renumber ship-issue steps to 1-based indexing ([3f37ba6](https://github.com/gotgenes/pi-autoformat/commit/3f37ba6613aa67a496115bb366a497df3661b8f3))
+* **prompts:** require clean git pull --ff-only before plan/tdd/ship ([22cfe92](https://github.com/gotgenes/pi-autoformat/commit/22cfe92a2cd6615951fc7ba027363c43a70dc177))
+
 ## [2.0.0](https://github.com/gotgenes/pi-autoformat/compare/v1.0.0...v2.0.0) (2026-05-01)
 
 
