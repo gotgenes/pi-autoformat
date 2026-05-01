@@ -153,16 +153,6 @@
           },
           "minItems": 1
         },
-        "extensions": {
-          "type": "array",
-          "description": "File extensions this formatter applies to.",
-          "items": {
-            "type": "string",
-            "pattern": "^\\..+"
-          },
-          "minItems": 1,
-          "uniqueItems": true
-        },
         "environment": {
           "type": "object",
           "description": "Environment variables to set when running the formatter.",
