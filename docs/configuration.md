@@ -154,6 +154,64 @@ Example:
 Merge semantics: `snapshotGlobs` and `wrappers` arrays replace lower-precedence
 values rather than merging — consistent with other array fields in this config.
 
+### `customMutationTools`
+
+Declare additional tool names whose results should be treated as file
+mutations and routed into the touched-files queue. Useful for project- or
+extension-specific tools that the agent calls directly.
+
+Each entry must specify the tool name and exactly one of `pathField` or
+`pathFields`, each a dotted path into the tool's `input` payload. A field
+may resolve to a string or a string array; arrays are flattened.
+
+Defaults to `[]`.
+
+Example:
+
+```json
+{
+  "customMutationTools": [
+    { "toolName": "my-codegen", "pathField": "output" },
+    { "toolName": "refactor", "pathFields": ["src", "dest"] }
+  ]
+}
+```
+
+Paths are normalized and scope-filtered by the same pipeline used for
+`write`/`edit`, so you do not need to restate scope rules per tool.
+
+### `eventBusMutationChannel`
+
+Lets peer extensions publish touched files onto Pi's shared event bus and
+have them flow through the same prompt-end formatter pipeline.
+
+Defaults:
+
+```json
+{
+  "eventBusMutationChannel": {
+    "enabled": true,
+    "channel": "autoformat:touched"
+  }
+}
+```
+
+Fields:
+
+- `enabled` — subscribe to the channel when Pi exposes `pi.events`.
+  Defaults to `true`.
+- `channel` — channel name to subscribe to. Defaults to `"autoformat:touched"`.
+
+Payload shape (best-effort; malformed payloads are silently ignored):
+
+```ts
+{ path: string }            // single file
+{ paths: string[] }         // multiple files
+```
+
+Paths are resolved relative to the session `cwd` and pass through the same
+scope filter as every other mutation source.
+
 ### `hideSummariesInTui`
 
 Whether formatter summaries should be hidden in the interactive TUI.

@@ -203,6 +203,22 @@ Three explicit, low-noise strategies are available:
 
 See [docs/configuration.md](docs/configuration.md) for the full configuration.
 
+## Custom mutation tools and EventBus integration
+
+Beyond `write`, `edit`, and shell detection, two additional surfaces let
+project- and extension-specific mutations participate in the same
+prompt-end formatter pipeline:
+
+- `customMutationTools` — declare extra tool names the agent calls and
+  which fields in their `input` payload point at touched files. Useful for
+  codegen tools, custom refactor commands, etc.
+- `eventBusMutationChannel` — subscribe to Pi's shared event bus (default
+  channel `autoformat:touched`) and accept `{ path }` or `{ paths }`
+  payloads from peer extensions.
+
+Both feed the same touched-files queue, so scope filtering, dedupe, and
+formatter resolution behave identically to the built-in tools.
+
 ## Development
 
 ```bash
