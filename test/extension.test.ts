@@ -28,6 +28,10 @@ type TestContext = {
 
 class TestPi {
   private readonly handlers = new Map<EventName, Handler[]>();
+  private readonly busHandlers = new Map<
+    string,
+    Array<(data: unknown) => void>
+  >();
 
   readonly on: ExtensionApiLike["on"] = (
     eventName: EventName,
@@ -37,6 +41,31 @@ class TestPi {
     existing.push(handler);
     this.handlers.set(eventName, existing);
   };
+
+  readonly events: NonNullable<ExtensionApiLike["events"]> = {
+    on: (channel, handler) => {
+      const existing = this.busHandlers.get(channel) ?? [];
+      existing.push(handler);
+      this.busHandlers.set(channel, existing);
+      return () => {
+        const current = this.busHandlers.get(channel) ?? [];
+        this.busHandlers.set(
+          channel,
+          current.filter((h) => h !== handler),
+        );
+      };
+    },
+  };
+
+  emitBus(channel: string, data: unknown): void {
+    for (const handler of this.busHandlers.get(channel) ?? []) {
+      handler(data);
+    }
+  }
+
+  busHandlerCount(channel: string): number {
+    return (this.busHandlers.get(channel) ?? []).length;
+  }
 
   async emit(
     eventName: EventName,
@@ -407,11 +436,94 @@ describe("createAutoformatExtension", () => {
     );
   });
 
+  it("subscribes to the configured EventBus channel and forwards touched paths", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const addTouchedPath = vi.fn();
+    const autoformatter = {
+      recordToolResult: vi.fn(),
+      flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+      addTouchedPath,
+    };
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue(autoformatter),
+      reportFlushResult: vi.fn(),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    expect(pi.busHandlerCount("autoformat:touched")).toBe(1);
+
+    pi.emitBus("autoformat:touched", { path: "src/a.ts" });
+    pi.emitBus("autoformat:touched", {
+      paths: ["src/b.ts", "src/c.ts"],
+    });
+    pi.emitBus("autoformat:touched", "not-an-object");
+
+    expect(addTouchedPath.mock.calls.map((c) => c[0])).toEqual([
+      "src/a.ts",
+      "src/b.ts",
+      "src/c.ts",
+    ]);
+
+    await pi.emit("session_shutdown", {}, ctx);
+    expect(pi.busHandlerCount("autoformat:touched")).toBe(0);
+  });
+
+  it("does not subscribe when eventBusMutationChannel.enabled is false", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult("prompt"),
+        config: createFormatterConfig({
+          formatMode: "prompt",
+          eventBusMutationChannel: { enabled: false },
+        }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        addTouchedPath: vi.fn(),
+      }),
+      reportFlushResult: vi.fn(),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    expect(pi.busHandlerCount("autoformat:touched")).toBe(0);
+  });
+
+  it("respects a custom EventBus channel name", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const addTouchedPath = vi.fn();
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult("prompt"),
+        config: createFormatterConfig({
+          formatMode: "prompt",
+          eventBusMutationChannel: { channel: "my:channel" },
+        }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ files: [] }),
+        addTouchedPath,
+      }),
+      reportFlushResult: vi.fn(),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    pi.emitBus("my:channel", { path: "src/x.ts" });
+    expect(addTouchedPath).toHaveBeenCalledWith("src/x.ts");
+  });
+
   it("wires customMutationTools into the default autoformatter queue", async () => {
     const config = createFormatterConfig({
-      customMutationTools: [
-        { toolName: "my-codegen", pathField: "output" },
-      ],
+      customMutationTools: [{ toolName: "my-codegen", pathField: "output" }],
       formatters: {
         "echo-fmt": {
           extensions: [".ts"],
@@ -428,8 +540,6 @@ describe("createAutoformatExtension", () => {
     );
     const result = await autoformatter.flushPrompt();
 
-    expect(result.files.map((f) => f.path)).toEqual([
-      "/repo/src/generated.ts",
-    ]);
+    expect(result.files.map((f) => f.path)).toEqual(["/repo/src/generated.ts"]);
   });
 });

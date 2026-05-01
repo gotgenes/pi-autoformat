@@ -7,7 +7,10 @@ import {
   type LoadConfigResult,
   loadAutoformatConfig,
 } from "./config-loader.js";
-import { createCustomToolHandlers } from "./custom-mutation-tools.js";
+import {
+  createCustomToolHandlers,
+  parseTouchedPayload,
+} from "./custom-mutation-tools.js";
 import { resolveFormatScope } from "./format-scope.js";
 import type { AutoformatConfig } from "./formatter-config.js";
 import type { CommandRunner, CommandRunResult } from "./formatter-executor.js";
@@ -70,6 +73,9 @@ export type ExtensionApiLike = {
   ): void;
   on(eventName: "agent_end", handler: ExtensionHandler<unknown>): void;
   on(eventName: "session_shutdown", handler: ExtensionHandler<unknown>): void;
+  events?: {
+    on(channel: string, handler: (data: unknown) => void): () => void;
+  };
 };
 
 type PromptAutoformatterLike = Pick<
@@ -103,6 +109,7 @@ type SessionState = {
   loadResult: LoadConfigResult;
   autoformatter: PromptAutoformatterLike;
   snapshotTracker: SnapshotTracker | undefined;
+  unsubscribeEventBus: (() => void) | undefined;
 };
 
 type ExecFileError = Error & {
@@ -222,6 +229,23 @@ function extractBashCommand(payload: unknown): string | undefined {
     return (payload as { command: string }).command;
   }
   return undefined;
+}
+
+function subscribeToEventBus(
+  pi: ExtensionApiLike,
+  config: AutoformatConfig,
+  autoformatter: PromptAutoformatterLike,
+): (() => void) | undefined {
+  const channelConfig = config.eventBusMutationChannel;
+  if (!channelConfig.enabled || !pi.events) {
+    return undefined;
+  }
+  return pi.events.on(channelConfig.channel, (data: unknown) => {
+    const paths = parseTouchedPayload(data);
+    for (const candidate of paths) {
+      autoformatter.addTouchedPath(candidate);
+    }
+  });
 }
 
 function extractToolOutputText(content: TextContentLike[] | undefined): string {
@@ -391,11 +415,18 @@ export function createAutoformatExtension(
             globs: detection.snapshotGlobs,
           })
         : undefined;
+    const autoformatter = createAutoformatter(cwd, loadResult.config);
+    const unsubscribeEventBus = subscribeToEventBus(
+      pi,
+      loadResult.config,
+      autoformatter,
+    );
     state = {
       cwd,
       loadResult,
-      autoformatter: createAutoformatter(cwd, loadResult.config),
+      autoformatter,
       snapshotTracker,
+      unsubscribeEventBus,
     };
     return state;
   }
@@ -479,6 +510,7 @@ export function createAutoformatExtension(
       await queueFlush(ctx);
     }
 
+    sessionState.unsubscribeEventBus?.();
     state = undefined;
   });
 }
