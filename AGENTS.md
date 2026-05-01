@@ -20,8 +20,10 @@ Read `docs/plans/` before making architectural changes.
 - Prefer extension-owned config files over Pi `settings.json` keys for package-specific behavior.
 - Format only files touched by the agent, not the whole repository.
 - Make formatter failures visible, but do not block the original file edit by default.
-- When a config pattern or documented recommendation can solve a problem, prefer that over a new runtime mechanism. Mechanism is forever; docs are reversible.
-- Trust formatters to discover their own project configs (most walk up the directory tree natively). Do not reimplement formatter-side config resolution inside this extension.
+- When a config pattern or documented recommendation can solve a problem, prefer that over a new runtime mechanism.
+  Mechanism is forever; docs are reversible.
+- Trust formatters to discover their own project configs (most walk up the directory tree natively).
+  Do not reimplement formatter-side config resolution inside this extension.
 
 ## Code Style
 
@@ -30,7 +32,16 @@ Read `docs/plans/` before making architectural changes.
 - Use standard top-level imports only.
 - Keep modules focused and composable.
 - Prefer explicit configuration over hidden behavior.
-- Treat any declared config field not read by the dispatcher as a maintenance trap. Remove it or document its purpose.
+- Treat any declared config field not read by the dispatcher as a maintenance trap.
+  Remove it or document its purpose.
+
+## Markdown
+
+- Use one sentence per line (unbroken) for better diffs.
+- Always specify a language on fenced code blocks (e.g., ` ```typescript `, ` ```bash `, ` ```text `); use `text` for plain output that has no specific syntax.
+- Use sequential numbering (`1.` `2.` `3.`) in ordered lists, restarting at `1.` under each new heading — markdownlint's MD029 rejects continued numbering across section boundaries.
+- Do not use bold text (`**...**`) as a substitute for headings — use proper Markdown heading syntax (`##`, `###`, `####`); markdownlint's MD036 rejects emphasis used as headings.
+- When embedding markdown content that itself contains fenced code blocks, use a 4-backtick outer fence (` ````markdown `) so inner 3-backtick fences render correctly.
 
 ## Configuration
 
