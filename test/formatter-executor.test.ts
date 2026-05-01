@@ -4,21 +4,40 @@ import {
   type CommandRunner,
   executeChainGroup,
 } from "../src/formatter-executor.js";
-import type { ResolvedFormatter } from "../src/formatter-registry.js";
+import type {
+  ResolvedChainStep,
+  ResolvedFormatter,
+} from "../src/formatter-registry.js";
 
-describe("executeChainGroup", () => {
-  const chain: ResolvedFormatter[] = [
-    {
-      name: "prettier",
-      command: ["prettier", "--write"],
-      environment: { PRETTIERD_DEFAULT_CONFIG: "./.prettierrc" },
-    },
-    {
-      name: "markdownlint",
-      command: ["markdownlint-cli2", "--fix"],
-    },
-  ];
+const prettier: ResolvedFormatter = {
+  name: "prettier",
+  command: ["prettier", "--write"],
+  environment: { PRETTIERD_DEFAULT_CONFIG: "./.prettierrc" },
+};
 
+const markdownlint: ResolvedFormatter = {
+  name: "markdownlint",
+  command: ["markdownlint-cli2", "--fix"],
+};
+
+const biome: ResolvedFormatter = {
+  name: "biome",
+  command: ["biome", "format", "--write"],
+};
+
+function singleStep(formatter: ResolvedFormatter): ResolvedChainStep {
+  return { kind: "single", formatter };
+}
+
+function fallbackStep(
+  alternatives: ResolvedFormatter[],
+): ResolvedChainStep {
+  return { kind: "fallback", alternatives };
+}
+
+const chain: ResolvedChainStep[] = [singleStep(prettier), singleStep(markdownlint)];
+
+describe("executeChainGroup (single steps)", () => {
   it("runs each step once with all files appended as trailing args", async () => {
     const calls: Array<{ command: string; args: string[] }> = [];
     const runner: CommandRunner = async (command, args) => {
@@ -71,7 +90,7 @@ describe("executeChainGroup", () => {
     };
 
     await executeChainGroup(
-      { chain: [chain[0]], files: ["/repo/only.md"] },
+      { chain: [singleStep(prettier)], files: ["/repo/only.md"] },
       runner,
     );
 
@@ -116,7 +135,7 @@ describe("executeChainGroup", () => {
     };
 
     await executeChainGroup(
-      { chain: [chain[0]], files: ["/repo/a.md"] },
+      { chain: [singleStep(prettier)], files: ["/repo/a.md"] },
       runner,
     );
 
@@ -133,7 +152,7 @@ describe("executeChainGroup", () => {
     };
 
     await executeChainGroup(
-      { chain: [chain[0]], files: ["/repo/a.md"] },
+      { chain: [singleStep(prettier)], files: ["/repo/a.md"] },
       runner,
       { cwd: "/repo" },
     );
@@ -148,7 +167,7 @@ describe("executeChainGroup", () => {
 
     const runs = await executeChainGroup(
       {
-        chain: [{ name: "broken", command: [] }],
+        chain: [singleStep({ name: "broken", command: [] })],
         files: ["/repo/a.md"],
       },
       runner,
@@ -171,5 +190,126 @@ describe("executeChainGroup", () => {
     const runs = await executeChainGroup({ chain, files: [] }, runner);
 
     expect(runs).toEqual([]);
+  });
+});
+
+describe("executeChainGroup (fallback steps)", () => {
+  it("runs the first alternative when its command is on PATH and emits no fallbackContext", async () => {
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const runs = await executeChainGroup(
+      {
+        chain: [fallbackStep([biome, prettier])],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: (cmd) => cmd === "biome" },
+    );
+
+    expect(calls).toEqual(["biome"]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      formatterName: "biome",
+      success: true,
+      exitCode: 0,
+    });
+    expect(runs[0].fallbackContext).toBeUndefined();
+  });
+
+  it("falls through when an alternative is missing and reports skipped names", async () => {
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const runs = await executeChainGroup(
+      {
+        chain: [fallbackStep([biome, prettier])],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: (cmd) => cmd === "prettier" },
+    );
+
+    expect(calls).toEqual(["prettier"]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      formatterName: "prettier",
+      success: true,
+      exitCode: 0,
+    });
+    expect(runs[0].fallbackContext).toEqual({ skipped: ["biome"] });
+  });
+
+  it("does NOT fall through on a non-zero exit code", async () => {
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 1, stderr: "syntax error" };
+    };
+
+    const runs = await executeChainGroup(
+      {
+        chain: [fallbackStep([biome, prettier])],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: () => true },
+    );
+
+    expect(calls).toEqual(["biome"]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      formatterName: "biome",
+      success: false,
+      exitCode: 1,
+      stderr: "syntax error",
+    });
+  });
+
+  it("emits no run when all alternatives are missing from PATH", async () => {
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const runs = await executeChainGroup(
+      {
+        chain: [fallbackStep([biome, prettier])],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: () => false },
+    );
+
+    expect(calls).toEqual([]);
+    expect(runs).toEqual([]);
+  });
+
+  it("runs subsequent single steps even when the fallback group is a no-op", async () => {
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const runs = await executeChainGroup(
+      {
+        chain: [fallbackStep([biome]), singleStep(markdownlint)],
+        files: ["/repo/a.md"],
+      },
+      runner,
+      { commandProbe: (cmd) => cmd !== "biome" },
+    );
+
+    expect(calls).toEqual(["markdownlint-cli2"]);
+    expect(runs).toHaveLength(1);
+    expect(runs[0]?.formatterName).toBe("markdownlint");
   });
 });

@@ -4,10 +4,11 @@ import {
   type CommandRunner,
   executeChainGroup,
 } from "./formatter-executor.js";
+import type { ChainStep } from "./formatter-registry.js";
 import {
   type FormatterConfig,
   groupFilesByChain,
-  resolveChain,
+  resolveChainSteps,
 } from "./formatter-registry.js";
 import {
   type MutationSourceHandler,
@@ -15,7 +16,7 @@ import {
 } from "./touched-files-queue.js";
 
 export type ChainGroupResult = {
-  chain: string[];
+  chain: ChainStep[];
   files: string[];
   runs: BatchRun[];
 };
@@ -59,7 +60,7 @@ export class PromptAutoformatter {
     const groupResults: ChainGroupResult[] = [];
 
     for (const group of fileGroups) {
-      const resolved = resolveChain(group.chain, this.config);
+      const resolved = resolveChainSteps(group.chain, this.config);
       if (resolved.length === 0) {
         continue;
       }
