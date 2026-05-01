@@ -285,6 +285,16 @@ type FailureSummary = {
   failedBatchCount: number;
 };
 
+function formatterLabel(
+  name: string,
+  fallbackContext?: { skipped: string[] },
+): string {
+  if (!fallbackContext || fallbackContext.skipped.length === 0) {
+    return name;
+  }
+  return `${name} (fallback after ${fallbackContext.skipped.join(", ")} unavailable)`;
+}
+
 function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
   const lines: string[] = [];
   let failedBatchCount = 0;
@@ -296,12 +306,30 @@ function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
       }
       failedBatchCount += 1;
       lines.push(
-        `${run.formatterName} (exit ${run.exitCode}): ${run.files.join(", ")}`,
+        `${formatterLabel(run.formatterName, run.fallbackContext)} (exit ${run.exitCode}): ${run.files.join(", ")}`,
       );
     }
   }
 
   return { lines, failedBatchCount };
+}
+
+function summarizeFallbackUsages(
+  result: PromptAutoformatterResult,
+): string[] {
+  const lines: string[] = [];
+  for (const group of result.groups) {
+    for (const run of group.runs) {
+      if (!run.success) {
+        continue;
+      }
+      if (!run.fallbackContext || run.fallbackContext.skipped.length === 0) {
+        continue;
+      }
+      lines.push(formatterLabel(run.formatterName, run.fallbackContext));
+    }
+  }
+  return lines;
 }
 
 function collectAllFiles(result: PromptAutoformatterResult): string[] {
@@ -352,9 +380,15 @@ function defaultReportFlushResult(
   const allFiles = collectAllFiles(result);
   const successPaths = summarizeSuccessPaths(allFiles);
   const fileWord = allFiles.length === 1 ? "file" : "files";
-  const message = successPaths
+  const baseMessage = successPaths
     ? `Autoformatted ${allFiles.length} ${fileWord}: ${successPaths}`
     : `Autoformatted ${allFiles.length} ${fileWord}.`;
+
+  const fallbackUsages = summarizeFallbackUsages(result);
+  const message =
+    fallbackUsages.length > 0
+      ? `${baseMessage} [${fallbackUsages.join("; ")}]`
+      : baseMessage;
 
   reportMessage(options.ctx, message, "info");
 }

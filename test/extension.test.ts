@@ -259,6 +259,82 @@ describe("createAutoformatExtension", () => {
     );
   });
 
+  it("renders fallback context in success summaries when present", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({ ui: { notify } });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: [{ fallback: ["biome", "prettier"] }],
+              files: ["/repo/a.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write", "/repo/a.ts"],
+                  files: ["/repo/a.ts"],
+                  success: true,
+                  exitCode: 0,
+                  fallbackContext: { skipped: ["biome"] },
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    const messages = notify.mock.calls.map((call) => call[0] as string);
+    expect(messages.some((m) => /prettier \(fallback after biome unavailable\)/.test(m))).toBe(true);
+  });
+
+  it("renders fallback context in failure summaries when present", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({ ui: { notify } });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: [{ fallback: ["biome", "prettier"] }],
+              files: ["/repo/a.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write", "/repo/a.ts"],
+                  files: ["/repo/a.ts"],
+                  success: false,
+                  exitCode: 2,
+                  fallbackContext: { skipped: ["biome"] },
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      "Formatter failures in 1 batch:\nprettier (fallback after biome unavailable) (exit 2): /repo/a.ts",
+      "warning",
+    );
+  });
+
   it("hides interactive success summaries when configured", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
