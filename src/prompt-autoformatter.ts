@@ -89,6 +89,13 @@ export class PromptAutoformatter {
         { cwd: this.cwd, commandProbe: cachedProbe },
       );
 
+      if (runs.length === 0) {
+        // E.g. a chain consisting of a single fallback group whose
+        // alternatives are all absent from PATH. Drop the group so it does
+        // not show up as a phantom "formatted nothing" entry downstream.
+        continue;
+      }
+
       groupResults.push({
         chain: group.chain,
         files: [...group.files],
