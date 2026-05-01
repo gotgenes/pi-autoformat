@@ -282,40 +282,41 @@ function reportMessage(
 
 type FailureSummary = {
   lines: string[];
-  failedRunCount: number;
+  failedBatchCount: number;
 };
 
 function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
   const lines: string[] = [];
-  let failedRunCount = 0;
+  let failedBatchCount = 0;
 
-  for (const file of result.files) {
-    const failures = file.runs.filter((run) => !run.success);
-    if (failures.length === 0) {
-      continue;
+  for (const group of result.groups) {
+    for (const run of group.runs) {
+      if (run.success) {
+        continue;
+      }
+      failedBatchCount += 1;
+      lines.push(
+        `${run.formatterName} (exit ${run.exitCode}): ${run.files.join(", ")}`,
+      );
     }
-
-    failedRunCount += failures.length;
-    const details = failures
-      .map((run) => `${run.formatterName} (exit ${run.exitCode})`)
-      .join(", ");
-    lines.push(`${file.path}: ${details}`);
   }
 
-  return {
-    lines,
-    failedRunCount,
-  };
+  return { lines, failedBatchCount };
 }
 
-function summarizeSuccessPaths(
-  result: PromptAutoformatterResult,
-): string | undefined {
-  if (result.files.length === 0 || result.files.length > 3) {
+function collectAllFiles(result: PromptAutoformatterResult): string[] {
+  const files: string[] = [];
+  for (const group of result.groups) {
+    files.push(...group.files);
+  }
+  return files;
+}
+
+function summarizeSuccessPaths(files: string[]): string | undefined {
+  if (files.length === 0 || files.length > 3) {
     return undefined;
   }
-
-  return result.files.map((file) => file.path).join(", ");
+  return files.join(", ");
 }
 
 function defaultReportFlushResult(
@@ -325,16 +326,17 @@ function defaultReportFlushResult(
     ctx: ExtensionContextLike;
   },
 ): void {
-  if (result.files.length === 0) {
+  if (result.groups.length === 0) {
     return;
   }
 
   const failureSummary = summarizeFailures(result);
   if (failureSummary.lines.length > 0) {
+    const batchWord = failureSummary.failedBatchCount === 1 ? "batch" : "batches";
     reportMessage(
       options.ctx,
       [
-        `Formatter failures in ${failureSummary.lines.length} file${failureSummary.lines.length === 1 ? "" : "s"} (${failureSummary.failedRunCount} failed run${failureSummary.failedRunCount === 1 ? "" : "s"}):`,
+        `Formatter failures in ${failureSummary.failedBatchCount} ${batchWord}:`,
         ...failureSummary.lines,
       ].join("\n"),
       "warning",
@@ -346,10 +348,12 @@ function defaultReportFlushResult(
     return;
   }
 
-  const successPaths = summarizeSuccessPaths(result);
+  const allFiles = collectAllFiles(result);
+  const successPaths = summarizeSuccessPaths(allFiles);
+  const fileWord = allFiles.length === 1 ? "file" : "files";
   const message = successPaths
-    ? `Autoformatted ${result.files.length} file${result.files.length === 1 ? "" : "s"}: ${successPaths}`
-    : `Autoformatted ${result.files.length} file${result.files.length === 1 ? "" : "s"}.`;
+    ? `Autoformatted ${allFiles.length} ${fileWord}: ${successPaths}`
+    : `Autoformatted ${allFiles.length} ${fileWord}.`;
 
   reportMessage(options.ctx, message, "info");
 }

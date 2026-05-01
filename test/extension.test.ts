@@ -102,10 +102,19 @@ function createContext(overrides?: Partial<TestContext>): TestContext {
 
 function createFlushResult(): PromptAutoformatterResult {
   return {
-    files: [
+    groups: [
       {
-        path: "/repo/src/example.ts",
-        runs: [],
+        chain: ["prettier"],
+        files: ["/repo/src/example.ts"],
+        runs: [
+          {
+            formatterName: "prettier",
+            command: ["prettier", "--write", "/repo/src/example.ts"],
+            files: ["/repo/src/example.ts"],
+            success: true,
+            exitCode: 0,
+          },
+        ],
       },
     ],
   };
@@ -126,24 +135,15 @@ describe("createAutoformatExtension", () => {
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
-          files: [
+          groups: [
             {
-              path: "/repo/src/example.ts",
+              chain: ["prettier"],
+              files: ["/repo/src/example.ts", "/repo/README.md"],
               runs: [
                 {
                   formatterName: "prettier",
                   command: [],
-                  success: true,
-                  exitCode: 0,
-                },
-              ],
-            },
-            {
-              path: "/repo/README.md",
-              runs: [
-                {
-                  formatterName: "prettier",
-                  command: [],
+                  files: ["/repo/src/example.ts", "/repo/README.md"],
                   success: true,
                   exitCode: 0,
                 },
@@ -160,6 +160,102 @@ describe("createAutoformatExtension", () => {
     expect(notify).toHaveBeenCalledWith(
       "Autoformatted 2 files: /repo/src/example.ts, /repo/README.md",
       "info",
+    );
+  });
+
+  it("counts files across multiple groups in the success summary", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({ ui: { notify } });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/a.ts", "/repo/b.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/a.ts", "/repo/b.ts"],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+            },
+            {
+              chain: ["prettier", "markdownlint"],
+              files: ["/repo/c.md"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/c.md"],
+                  success: true,
+                  exitCode: 0,
+                },
+                {
+                  formatterName: "markdownlint",
+                  command: [],
+                  files: ["/repo/c.md"],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      "Autoformatted 3 files: /repo/a.ts, /repo/b.ts, /repo/c.md",
+      "info",
+    );
+  });
+
+  it("reports per-batch failure lines listing each batch's files", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const ctx = createContext({ ui: { notify } });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/a.ts", "/repo/b.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/a.ts", "/repo/b.ts"],
+                  success: false,
+                  exitCode: 2,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      "Formatter failures in 1 batch:\nprettier (exit 2): /repo/a.ts, /repo/b.ts",
+      "warning",
     );
   });
 
@@ -203,19 +299,22 @@ describe("createAutoformatExtension", () => {
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
-          files: [
+          groups: [
             {
-              path: "/repo/README.md",
+              chain: ["prettier", "markdownlint-cli2"],
+              files: ["/repo/README.md"],
               runs: [
                 {
                   formatterName: "prettier",
                   command: ["prettier", "--write", "/repo/README.md"],
+                  files: ["/repo/README.md"],
                   success: false,
                   exitCode: 2,
                 },
                 {
                   formatterName: "markdownlint-cli2",
                   command: ["markdownlint-cli2", "--fix", "/repo/README.md"],
+                  files: ["/repo/README.md"],
                   success: false,
                   exitCode: 1,
                 },
@@ -230,7 +329,7 @@ describe("createAutoformatExtension", () => {
     await pi.emit("agent_end", {}, ctx);
 
     expect(warn).toHaveBeenCalledWith(
-      "[pi-autoformat] Formatter failures in 1 file (2 failed runs):\n/repo/README.md: prettier (exit 2), markdownlint-cli2 (exit 1)",
+      "[pi-autoformat] Formatter failures in 2 batches:\nprettier (exit 2): /repo/README.md\nmarkdownlint-cli2 (exit 1): /repo/README.md",
     );
     expect(log).not.toHaveBeenCalled();
 
