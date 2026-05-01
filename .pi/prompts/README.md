@@ -5,11 +5,11 @@ Slash commands for this repository's issue-driven workflow. Loaded automatically
 ## The workflow
 
 ```text
-gh issue → /plan-issue N    →   /tdd-plan [N]   →   /ship-issue N
-            (writes plan,        (red→green→         (push, close,
-             asks design Qs,      commit per TDD     merge release-
-             commits plan)        step; lint+test;   please PR)
-                                  doc commit)
+gh issue → /plan-issue N    →   /tdd-plan [N]   →   /ship-issue N   →   /retro [N]
+            (writes plan,        (red→green→         (push, close,         (synthesize friction/
+             asks design Qs,      commit per TDD     merge release-        wins, propose small
+             commits plan)        step; lint+test;   please PR)            edits, persist to
+                                  doc commit)                              docs/retro/)
 ```
 
 Each step ends at a natural review breakpoint. You can rerun any step independently.
@@ -33,6 +33,10 @@ Then runs the full suite + linter, updates docs (`README.md`, `docs/configuratio
 ### `/ship-issue <issue-number>`
 
 Pushes, waits for CI, closes the issue with a summary built from the commit log, then merges any open release-please PR with `--rebase` and pulls the release commit. Refuses to force-push or merge a non-`CLEAN` PR.
+
+### `/retro [issue-number]`
+
+Reviews the session for friction/wins, writes `docs/retro/NNNN-<slug>.md`, surfaces per-proposal context, then uses `ask-user` to confirm small (~1–3 file) edits to `AGENTS.md` or prompts. Records what changed in a `### Changes made` subsection and commits as `docs(retro): ...`. Larger reworks are recorded as follow-ups, not landed inline.
 
 ## Why three templates and not one?
 
