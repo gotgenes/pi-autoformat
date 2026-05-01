@@ -8,11 +8,9 @@ describe("PromptAutoformatter", () => {
     formatters: {
       prettier: {
         command: ["prettier", "--write"],
-        extensions: [".ts", ".md"],
       },
       markdownlint: {
         command: ["markdownlint-cli2", "--fix"],
-        extensions: [".md"],
       },
     },
     chains: {

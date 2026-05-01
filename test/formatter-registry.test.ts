@@ -9,9 +9,9 @@ import {
 describe("groupFilesByChain", () => {
   const config: FormatterConfig = {
     formatters: {
-      prettier: { command: ["prettier", "--write"], extensions: [] },
-      markdownlint: { command: ["markdownlint-cli2", "--fix"], extensions: [] },
-      biome: { command: ["biome", "format", "--write"], extensions: [] },
+      prettier: { command: ["prettier", "--write"] },
+      markdownlint: { command: ["markdownlint-cli2", "--fix"] },
+      biome: { command: ["biome", "format", "--write"] },
     },
     chains: {
       ".md": ["prettier", "markdownlint"],
@@ -100,16 +100,13 @@ describe("resolveChain", () => {
     formatters: {
       prettier: {
         command: ["prettier", "--write"],
-        extensions: [".md"],
         environment: { PRETTIERD_DEFAULT_CONFIG: "./.prettierrc" },
       },
       markdownlint: {
         command: ["markdownlint-cli2", "--fix"],
-        extensions: [".md"],
       },
       disabled: {
         command: ["never"],
-        extensions: [".md"],
         disabled: true,
       },
     },

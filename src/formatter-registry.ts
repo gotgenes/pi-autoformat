@@ -2,7 +2,6 @@ import path from "node:path";
 
 export type FormatterDefinition = {
   command: string[];
-  extensions: string[];
   environment?: Record<string, string>;
   disabled?: boolean;
 };

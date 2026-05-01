@@ -625,7 +625,6 @@ describe("createAutoformatExtension", () => {
       customMutationTools: [{ toolName: "my-codegen", pathField: "output" }],
       formatters: {
         "echo-fmt": {
-          extensions: [".ts"],
           command: ["true"],
         },
       },

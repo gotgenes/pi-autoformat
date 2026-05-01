@@ -21,7 +21,6 @@ describe("validateUserFormatterConfig", () => {
       formatters: {
         prettier: {
           command: ["prettier", "--write"],
-          extensions: [".TS", ".md"],
         },
       },
       chains: {
@@ -37,7 +36,6 @@ describe("validateUserFormatterConfig", () => {
       formatters: {
         prettier: {
           command: ["prettier", "--write"],
-          extensions: [".ts", ".md"],
         },
       },
       chains: {
@@ -51,7 +49,6 @@ describe("validateUserFormatterConfig", () => {
       formatters: {
         prettier: {
           command: ["prettier", "--write", "$FILE"],
-          extensions: [".md"],
         },
       },
     });
@@ -70,7 +67,6 @@ describe("validateUserFormatterConfig", () => {
       formatters: {
         prettier: {
           command: ["prettier", "--stdin-filepath=$FILE"],
-          extensions: [".md"],
         },
       },
     });
@@ -94,7 +90,9 @@ describe("validateUserFormatterConfig", () => {
         command: ["prettier", "--write"],
       },
     });
-    expect(result.config.formatters.prettier).not.toHaveProperty("extensions");
+    expect(result.config.formatters?.prettier).not.toHaveProperty(
+      "extensions",
+    );
     const extensionsIssues = result.issues.filter(
       (issue) => issue.path === "formatters.prettier.extensions",
     );
@@ -115,13 +113,16 @@ describe("validateUserFormatterConfig", () => {
     });
 
     expect(result.config).toEqual({
-      formatters: {},
+      formatters: {
+        prettier: {
+          command: ["prettier", "--write"],
+        },
+      },
     });
     expect(result.issues.map((issue) => issue.path)).toEqual([
       "formatMode",
       "commandTimeoutMs",
       "unexpected",
-      "formatters.prettier.extensions",
     ]);
   });
 });
@@ -161,7 +162,6 @@ describe("loadAutoformatConfig", () => {
           formatters: {
             prettier: {
               command: ["pnpm", "exec", "prettier", "--write"],
-              extensions: [".ts", ".md"],
             },
           },
           chains: {
@@ -185,7 +185,6 @@ describe("loadAutoformatConfig", () => {
           formatters: {
             "markdownlint-cli2": {
               command: ["pnpm", "exec", "markdownlint-cli2", "--fix"],
-              extensions: [".md"],
             },
           },
           chains: {

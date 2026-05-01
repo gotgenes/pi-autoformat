@@ -153,39 +153,6 @@ function validateStringArray(
   return normalized;
 }
 
-function validateExtensionArray(
-  fieldPath: string,
-  value: unknown,
-  issues: ConfigValidationIssue[],
-  sourcePath?: string,
-): string[] | undefined {
-  const extensions = validateStringArray(fieldPath, value, issues, sourcePath);
-  if (!extensions) {
-    return undefined;
-  }
-
-  const normalized: string[] = [];
-  for (let index = 0; index < extensions.length; index += 1) {
-    const extension = extensions[index];
-    if (!extension.startsWith(".")) {
-      pushIssue(
-        issues,
-        `${fieldPath}[${index}]`,
-        'Expected a file extension beginning with ".".',
-        sourcePath,
-      );
-      return undefined;
-    }
-
-    const lowercased = extension.toLowerCase();
-    if (!normalized.includes(lowercased)) {
-      normalized.push(lowercased);
-    }
-  }
-
-  return normalized;
-}
-
 function validateEnvironment(
   fieldPath: string,
   value: unknown,
@@ -262,10 +229,10 @@ function validateFormatterDefinition(
     }
 
     if (key === "extensions") {
-      definition.extensions = validateExtensionArray(
-        `${fieldPath}.extensions`,
-        entry,
+      pushIssue(
         issues,
+        `${fieldPath}.extensions`,
+        "Deprecated. Remove this field; dispatch is driven by `chains`. The value is ignored.",
         sourcePath,
       );
       continue;
@@ -299,8 +266,8 @@ function validateFormatterDefinition(
     );
   }
 
-  if (!definition.command || !definition.extensions) {
-    if (!definition.command && !commandProvided) {
+  if (!definition.command) {
+    if (!commandProvided) {
       pushIssue(
         issues,
         `${fieldPath}.command`,
@@ -308,23 +275,19 @@ function validateFormatterDefinition(
         sourcePath,
       );
     }
-    if (!definition.extensions) {
-      pushIssue(
-        issues,
-        `${fieldPath}.extensions`,
-        "Missing required property.",
-        sourcePath,
-      );
-    }
     return undefined;
   }
 
-  return {
+  const resolved: FormatterDefinition = {
     command: definition.command,
-    extensions: definition.extensions,
-    environment: definition.environment,
-    disabled: definition.disabled,
   };
+  if (definition.environment !== undefined) {
+    resolved.environment = definition.environment;
+  }
+  if (definition.disabled !== undefined) {
+    resolved.disabled = definition.disabled;
+  }
+  return resolved;
 }
 
 function validateFormatters(

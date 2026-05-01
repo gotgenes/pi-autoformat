@@ -14,12 +14,20 @@ describe("createFormatterConfig", () => {
     expect(Object.keys(config.formatters)).toContain("markdownlint-cli2");
   });
 
+  it("does not declare an extensions field on built-in formatters", () => {
+    expect(DEFAULT_FORMATTER_CONFIG.formatters.prettier).not.toHaveProperty(
+      "extensions",
+    );
+    expect(
+      DEFAULT_FORMATTER_CONFIG.formatters["markdownlint-cli2"],
+    ).not.toHaveProperty("extensions");
+  });
+
   it("allows overriding builtin formatter commands", () => {
     const userConfig: UserFormatterConfig = {
       formatters: {
         prettier: {
           command: ["pnpm", "exec", "prettier", "--write"],
-          extensions: [".ts", ".md"],
         },
       },
     };

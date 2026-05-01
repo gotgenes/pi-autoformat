@@ -57,22 +57,9 @@ export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
   formatters: {
     prettier: {
       command: ["prettier", "--write"],
-      extensions: [
-        ".js",
-        ".cjs",
-        ".mjs",
-        ".jsx",
-        ".ts",
-        ".tsx",
-        ".json",
-        ".md",
-        ".yaml",
-        ".yml",
-      ],
     },
     "markdownlint-cli2": {
       command: ["markdownlint-cli2", "--fix"],
-      extensions: [".md"],
     },
   },
   chains: {
