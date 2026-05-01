@@ -30,9 +30,20 @@ export type ResolvedFormatter = {
 };
 
 export type ChainGroup = {
-  chain: string[];
+  chain: ChainStep[];
   files: string[];
 };
+
+function encodeChainStep(step: ChainStep): string {
+  if (typeof step === "string") {
+    return `S:${step}`;
+  }
+  return `F:${step.fallback.join("|")}`;
+}
+
+function encodeChain(chain: ChainStep[]): string {
+  return chain.map(encodeChainStep).join("\u0000");
+}
 
 export function groupFilesByChain(
   files: string[],
@@ -46,15 +57,15 @@ export function groupFilesByChain(
     if (!extension) {
       continue;
     }
-    const chainNames = config.chains?.[extension];
-    if (!chainNames || chainNames.length === 0) {
+    const chainSteps = config.chains?.[extension];
+    if (!chainSteps || chainSteps.length === 0) {
       continue;
     }
-    const key = chainNames.join("\u0000");
+    const key = encodeChain(chainSteps);
     const existingIndex = indexByKey.get(key);
     if (existingIndex === undefined) {
       indexByKey.set(key, groups.length);
-      groups.push({ chain: [...chainNames], files: [filePath] });
+      groups.push({ chain: [...chainSteps], files: [filePath] });
     } else {
       groups[existingIndex].files.push(filePath);
     }

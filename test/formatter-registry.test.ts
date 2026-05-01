@@ -93,6 +93,78 @@ describe("groupFilesByChain", () => {
   it("returns no groups when given no files", () => {
     expect(groupFilesByChain([], config)).toEqual([]);
   });
+
+  describe("with fallback steps", () => {
+    const fallbackConfig: FormatterConfig = {
+      formatters: {
+        biome: { command: ["biome", "format", "--write"] },
+        prettier: { command: ["prettier", "--write"] },
+        "markdownlint-cli2": {
+          command: ["markdownlint-cli2", "--fix"],
+        },
+      },
+      chains: {
+        ".ts": [{ fallback: ["biome", "prettier"] }],
+        ".tsx": [{ fallback: ["biome", "prettier"] }],
+        ".md": [
+          { fallback: ["biome", "prettier"] },
+          "markdownlint-cli2",
+        ],
+      },
+    };
+
+    it("keeps the original chain step shape in the returned group", () => {
+      const groups = groupFilesByChain(["/repo/a.ts"], fallbackConfig);
+      expect(groups).toEqual([
+        {
+          chain: [{ fallback: ["biome", "prettier"] }],
+          files: ["/repo/a.ts"],
+        },
+      ]);
+    });
+
+    it("groups identical fallback chains across extensions", () => {
+      const groups = groupFilesByChain(
+        ["/repo/a.ts", "/repo/b.tsx"],
+        fallbackConfig,
+      );
+      expect(groups).toEqual([
+        {
+          chain: [{ fallback: ["biome", "prettier"] }],
+          files: ["/repo/a.ts", "/repo/b.tsx"],
+        },
+      ]);
+    });
+
+    it("groups mixed string + fallback chains", () => {
+      const groups = groupFilesByChain(
+        ["/repo/a.ts", "/repo/b.md", "/repo/c.md"],
+        fallbackConfig,
+      );
+      expect(groups).toHaveLength(2);
+      const md = groups.find((g) => g.files.includes("/repo/b.md"));
+      expect(md?.chain).toEqual([
+        { fallback: ["biome", "prettier"] },
+        "markdownlint-cli2",
+      ]);
+      expect(md?.files).toEqual(["/repo/b.md", "/repo/c.md"]);
+    });
+
+    it("separates groups whose fallback ordering differs", () => {
+      const reorderedConfig: FormatterConfig = {
+        formatters: fallbackConfig.formatters,
+        chains: {
+          ".ts": [{ fallback: ["biome", "prettier"] }],
+          ".js": [{ fallback: ["prettier", "biome"] }],
+        },
+      };
+      const groups = groupFilesByChain(
+        ["/repo/a.ts", "/repo/b.js"],
+        reorderedConfig,
+      );
+      expect(groups).toHaveLength(2);
+    });
+  });
 });
 
 describe("resolveChain", () => {
