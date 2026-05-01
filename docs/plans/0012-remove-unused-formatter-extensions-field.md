@@ -1,3 +1,8 @@
+---
+issue: 12
+issue_title: "Remove unused `extensions` field from formatter definitions"
+---
+
 # Plan: Remove Unused `extensions` Field From Formatter Definitions (Issue #12)
 
 ## Problem Statement

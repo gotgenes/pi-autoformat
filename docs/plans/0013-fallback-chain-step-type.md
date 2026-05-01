@@ -1,3 +1,8 @@
+---
+issue: 13
+issue_title: "Add `fallback` step type to formatter chains"
+---
+
 # Plan: Add `fallback` Step Type to Formatter Chains (Issue #13)
 
 ## Problem Statement

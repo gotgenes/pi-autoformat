@@ -55,6 +55,24 @@ Read `docs/plans/` before making architectural changes.
   Drop the field from the TypeScript types, the JSON schema, and the docs in the same change.
   This avoids breaking on-disk configs while still surfacing the trap.
 
+## Documentation frontmatter
+
+Docs under `docs/plans/` and `docs/retro/` use YAML frontmatter for structured metadata.
+GitHub renders it as a table at the top of the file.
+
+Schema (both fields are strings/numbers — quote any title containing backticks or colons):
+
+```yaml
+---
+issue: 14                                              # optional: omit for plans that predate issue tracking
+issue_title: "Batch-by-default formatter dispatch"     # required
+---
+```
+
+- `issue` stores the number only, never a URL.
+- Do not duplicate frontmatter fields as inline metadata in the body (e.g. `Issue #N` in the H1 is fine; a separate `**Issue:** #N` line is not).
+- Other doc types (`docs/configuration.md`, `README.md`) do not use frontmatter.
+
 ## Testing
 
 - Add focused tests for formatter resolution, execution order, and failure handling.

@@ -1,3 +1,8 @@
+---
+issue: 14
+issue_title: "Batch-by-default formatter dispatch"
+---
+
 # Plan: Batch-by-Default Formatter Dispatch (Issue #14)
 
 ## Problem Statement

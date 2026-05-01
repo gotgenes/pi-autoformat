@@ -29,7 +29,18 @@ Before writing the plan, identify any genuinely ambiguous design choices. If the
 
 ## Write the plan
 
-File: `docs/plans/NNNN-<short-slug>.md`. Sections, in this order:
+File: `docs/plans/NNNN-<short-slug>.md`.
+
+Start with YAML frontmatter (see `AGENTS.md` § Documentation frontmatter):
+
+```yaml
+---
+issue: $1
+issue_title: "<exact title from `gh issue view`>"
+---
+```
+
+Then the body, sections in this order:
 
 - **Problem Statement** — quote the issue's framing in your own words.
 - **Goals** — bullet list, scoped to this change.

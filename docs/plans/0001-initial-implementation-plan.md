@@ -1,3 +1,7 @@
+---
+issue_title: "Initial implementation plan (predates issue tracking)"
+---
+
 # Pi Autoformat: Initial Implementation Plan
 
 ## Problem Statement

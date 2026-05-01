@@ -1,3 +1,8 @@
+---
+issue: 4
+issue_title: "Post-v1: investigate shell-driven mutation coverage"
+---
+
 # Plan: Shell-Driven Mutation Coverage (Issue #4)
 
 ## Problem Statement

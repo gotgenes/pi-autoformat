@@ -1,3 +1,8 @@
+---
+issue: 3
+issue_title: "Post-v1: support additional Pi mutation tools"
+---
+
 # Plan: Additional Pi Mutation Tools (Issue #3)
 
 ## Problem Statement
