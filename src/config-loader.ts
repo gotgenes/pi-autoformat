@@ -11,7 +11,11 @@ import {
   type FormatMode,
   type UserFormatterConfig,
 } from "./formatter-config.js";
-import type { FormatterDefinition } from "./formatter-registry.js";
+import type {
+  ChainStep,
+  FallbackChainStep,
+  FormatterDefinition,
+} from "./formatter-registry.js";
 
 // Pi's built-in tool names. Declaring any of these in customMutationTools is
 // a configuration mistake: write/edit are already covered, bash has its own
@@ -316,17 +320,103 @@ function validateFormatters(
   return formatters;
 }
 
+function validateFallbackStep(
+  fieldPath: string,
+  value: Record<string, unknown>,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): FallbackChainStep | undefined {
+  let fallbackValue: unknown;
+  let hasUnknown = false;
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "fallback") {
+      fallbackValue = entry;
+      continue;
+    }
+    pushIssue(
+      issues,
+      `${fieldPath}.${key}`,
+      "Unknown fallback step property.",
+      sourcePath,
+    );
+    hasUnknown = true;
+  }
+
+  if (!Array.isArray(fallbackValue) || fallbackValue.length === 0) {
+    pushIssue(
+      issues,
+      `${fieldPath}.fallback`,
+      "Expected a non-empty array of formatter names.",
+      sourcePath,
+    );
+    return undefined;
+  }
+
+  const names: string[] = [];
+  for (let index = 0; index < fallbackValue.length; index += 1) {
+    const entry = fallbackValue[index];
+    if (typeof entry !== "string" || entry.length === 0) {
+      pushIssue(
+        issues,
+        `${fieldPath}.fallback[${index}]`,
+        "Expected a non-empty string.",
+        sourcePath,
+      );
+      return undefined;
+    }
+    names.push(entry);
+  }
+
+  if (hasUnknown) {
+    return undefined;
+  }
+
+  return { fallback: names };
+}
+
+function validateChainStep(
+  fieldPath: string,
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): ChainStep | undefined {
+  if (typeof value === "string") {
+    if (value.length === 0) {
+      pushIssue(
+        issues,
+        fieldPath,
+        "Expected a non-empty formatter name.",
+        sourcePath,
+      );
+      return undefined;
+    }
+    return value;
+  }
+
+  if (isRecord(value)) {
+    return validateFallbackStep(fieldPath, value, issues, sourcePath);
+  }
+
+  pushIssue(
+    issues,
+    fieldPath,
+    'Expected a formatter name (string) or a fallback group ({ "fallback": [name, ...] }).',
+    sourcePath,
+  );
+  return undefined;
+}
+
 function validateChains(
   value: unknown,
   issues: ConfigValidationIssue[],
   sourcePath?: string,
-): Record<string, string[]> | undefined {
+): Record<string, ChainStep[]> | undefined {
   if (!isRecord(value)) {
     pushIssue(issues, "chains", "Expected an object.", sourcePath);
     return undefined;
   }
 
-  const chains: Record<string, string[]> = {};
+  const chains: Record<string, ChainStep[]> = {};
   for (const [extension, chainValue] of Object.entries(value)) {
     if (!extension.startsWith(".")) {
       pushIssue(
@@ -338,15 +428,36 @@ function validateChains(
       continue;
     }
 
-    const chain = validateStringArray(
-      `chains.${extension}`,
-      chainValue,
-      issues,
-      sourcePath,
-    );
-    if (chain) {
-      chains[extension.toLowerCase()] = chain;
+    if (!Array.isArray(chainValue) || chainValue.length === 0) {
+      pushIssue(
+        issues,
+        `chains.${extension}`,
+        "Expected a non-empty array of chain steps.",
+        sourcePath,
+      );
+      continue;
     }
+
+    const steps: ChainStep[] = [];
+    let stepError = false;
+    for (let index = 0; index < chainValue.length; index += 1) {
+      const step = validateChainStep(
+        `chains.${extension}[${index}]`,
+        chainValue[index],
+        issues,
+        sourcePath,
+      );
+      if (!step) {
+        stepError = true;
+        continue;
+      }
+      steps.push(step);
+    }
+
+    if (stepError) {
+      continue;
+    }
+    chains[extension.toLowerCase()] = steps;
   }
 
   return chains;

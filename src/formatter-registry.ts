@@ -6,9 +6,21 @@ export type FormatterDefinition = {
   disabled?: boolean;
 };
 
+export type FallbackChainStep = {
+  fallback: string[];
+};
+
+export type ChainStep = string | FallbackChainStep;
+
+export function isFallbackChainStep(
+  step: ChainStep,
+): step is FallbackChainStep {
+  return typeof step === "object" && step !== null && "fallback" in step;
+}
+
 export type FormatterConfig = {
   formatters: Record<string, FormatterDefinition>;
-  chains?: Record<string, string[]>;
+  chains?: Record<string, ChainStep[]>;
 };
 
 export type ResolvedFormatter = {

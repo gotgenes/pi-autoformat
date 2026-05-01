@@ -98,6 +98,109 @@ describe("validateUserFormatterConfig", () => {
     expect(extensionsIssues[0]?.message).toMatch(/[Dd]eprecat/);
   });
 
+  describe("chains: fallback step shape", () => {
+    it("accepts a string step (current behavior)", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: { ".ts": ["prettier"] },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains).toEqual({ ".ts": ["prettier"] });
+    });
+
+    it("accepts a fallback object step", () => {
+      const result = validateUserFormatterConfig({
+        formatters: {
+          biome: { command: ["biome", "format", "--write"] },
+          prettier: { command: ["prettier", "--write"] },
+        },
+        chains: {
+          ".ts": [{ fallback: ["biome", "prettier"] }],
+        },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains).toEqual({
+        ".ts": [{ fallback: ["biome", "prettier"] }],
+      });
+    });
+
+    it("accepts a chain mixing string and fallback steps", () => {
+      const result = validateUserFormatterConfig({
+        formatters: {
+          biome: { command: ["biome", "format", "--write"] },
+          prettier: { command: ["prettier", "--write"] },
+          "markdownlint-cli2": {
+            command: ["markdownlint-cli2", "--fix"],
+          },
+        },
+        chains: {
+          ".md": [
+            { fallback: ["biome", "prettier"] },
+            "markdownlint-cli2",
+          ],
+        },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains?.[".md"]).toEqual([
+        { fallback: ["biome", "prettier"] },
+        "markdownlint-cli2",
+      ]);
+    });
+
+    it("rejects an empty fallback array", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: { ".ts": [{ fallback: [] }] },
+      });
+      expect(result.issues).toEqual([
+        expect.objectContaining({
+          path: "chains..ts[0].fallback",
+        }),
+      ]);
+      expect(result.config.chains?.[".ts"]).toBeUndefined();
+    });
+
+    it("rejects a fallback object with unknown sibling keys", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: {
+          ".ts": [{ fallback: ["prettier"], when: "never" }],
+        },
+      });
+      expect(
+        result.issues.some(
+          (i) => i.path === "chains..ts[0].when",
+        ),
+      ).toBe(true);
+    });
+
+    it("rejects a step that is neither string nor fallback object", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: { ".ts": [42 as unknown as string] },
+      });
+      expect(
+        result.issues.some(
+          (i) => i.path === "chains..ts[0]",
+        ),
+      ).toBe(true);
+    });
+
+    it("rejects a non-string entry inside fallback", () => {
+      const result = validateUserFormatterConfig({
+        formatters: { prettier: { command: ["prettier", "--write"] } },
+        chains: {
+          ".ts": [{ fallback: ["prettier", 7 as unknown as string] }],
+        },
+      });
+      expect(
+        result.issues.some(
+          (i) => i.path === "chains..ts[0].fallback[1]",
+        ),
+      ).toBe(true);
+    });
+  });
+
   it("reports invalid fields and returns only valid fragments", () => {
     const result = validateUserFormatterConfig({
       formatMode: "later",

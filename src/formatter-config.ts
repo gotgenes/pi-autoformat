@@ -1,6 +1,7 @@
 import type { CustomMutationToolSpec } from "./custom-mutation-tools.js";
 import type { FormatScopeSetting } from "./format-scope.js";
 import type {
+  ChainStep,
   FormatterConfig,
   FormatterDefinition,
 } from "./formatter-registry.js";
@@ -31,7 +32,7 @@ export type UserFormatterConfig = {
   customMutationTools?: CustomMutationToolSpec[];
   eventBusMutationChannel?: Partial<EventBusMutationChannelConfig>;
   formatters?: Record<string, FormatterDefinition>;
-  chains?: Record<string, string[]>;
+  chains?: Record<string, ChainStep[]>;
 };
 
 export type AutoformatConfig = FormatterConfig & {
@@ -43,7 +44,7 @@ export type AutoformatConfig = FormatterConfig & {
   customMutationTools: CustomMutationToolSpec[];
   eventBusMutationChannel: EventBusMutationChannelConfig;
   formatters: Record<string, FormatterDefinition>;
-  chains: Record<string, string[]>;
+  chains: Record<string, ChainStep[]>;
 };
 
 export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
