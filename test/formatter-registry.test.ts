@@ -4,6 +4,7 @@ import {
   type FormatterConfig,
   groupFilesByChain,
   resolveChain,
+  resolveChainSteps,
 } from "../src/formatter-registry.js";
 
 describe("groupFilesByChain", () => {
@@ -228,5 +229,76 @@ describe("resolveChain", () => {
 
   it("returns an empty array for an empty chain", () => {
     expect(resolveChain([], config)).toEqual([]);
+  });
+});
+
+describe("resolveChainSteps", () => {
+  const config: FormatterConfig = {
+    formatters: {
+      prettier: { command: ["prettier", "--write"] },
+      biome: { command: ["biome", "format", "--write"] },
+      "markdownlint-cli2": {
+        command: ["markdownlint-cli2", "--fix"],
+      },
+      off: { command: ["never"], disabled: true },
+    },
+    chains: {},
+  };
+
+  it("resolves a single string step to kind 'single'", () => {
+    const resolved = resolveChainSteps(["prettier"], config);
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.kind).toBe("single");
+    if (resolved[0]?.kind === "single") {
+      expect(resolved[0].formatter.name).toBe("prettier");
+      expect(resolved[0].formatter.command).toEqual(["prettier", "--write"]);
+    }
+  });
+
+  it("drops a single step that names an unknown or disabled formatter", () => {
+    expect(resolveChainSteps(["nope"], config)).toEqual([]);
+    expect(resolveChainSteps(["off"], config)).toEqual([]);
+  });
+
+  it("resolves a fallback step to kind 'fallback' with alternatives in order", () => {
+    const resolved = resolveChainSteps(
+      [{ fallback: ["biome", "prettier"] }],
+      config,
+    );
+    expect(resolved).toHaveLength(1);
+    expect(resolved[0]?.kind).toBe("fallback");
+    if (resolved[0]?.kind === "fallback") {
+      expect(resolved[0].alternatives.map((a) => a.name)).toEqual([
+        "biome",
+        "prettier",
+      ]);
+    }
+  });
+
+  it("drops disabled and unknown alternatives within a fallback step", () => {
+    const resolved = resolveChainSteps(
+      [{ fallback: ["off", "unknown", "prettier"] }],
+      config,
+    );
+    expect(resolved).toHaveLength(1);
+    if (resolved[0]?.kind === "fallback") {
+      expect(resolved[0].alternatives.map((a) => a.name)).toEqual([
+        "prettier",
+      ]);
+    }
+  });
+
+  it("drops a fallback step whose alternatives all reduce away", () => {
+    expect(
+      resolveChainSteps([{ fallback: ["off", "unknown"] }], config),
+    ).toEqual([]);
+  });
+
+  it("resolves mixed string + fallback chains preserving order", () => {
+    const resolved = resolveChainSteps(
+      [{ fallback: ["biome", "prettier"] }, "markdownlint-cli2"],
+      config,
+    );
+    expect(resolved.map((s) => s.kind)).toEqual(["fallback", "single"]);
   });
 });
