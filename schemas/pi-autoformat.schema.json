@@ -146,9 +146,10 @@
       "properties": {
         "command": {
           "type": "array",
-          "description": "Command argv used to format a file. Use $FILE as the file placeholder.",
+          "description": "Command argv used to format files. The executor appends touched file paths to the end of this command, so do not include file paths or the legacy $FILE token here.",
           "items": {
-            "type": "string"
+            "type": "string",
+            "not": { "pattern": "\\$FILE" }
           },
           "minItems": 1
         },

@@ -18,7 +18,7 @@ describe("createFormatterConfig", () => {
     const userConfig: UserFormatterConfig = {
       formatters: {
         prettier: {
-          command: ["pnpm", "exec", "prettier", "--write", "$FILE"],
+          command: ["pnpm", "exec", "prettier", "--write"],
           extensions: [".ts", ".md"],
         },
       },
@@ -31,7 +31,6 @@ describe("createFormatterConfig", () => {
       "exec",
       "prettier",
       "--write",
-      "$FILE",
     ]);
   });
 

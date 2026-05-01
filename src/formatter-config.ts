@@ -56,7 +56,7 @@ export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
   eventBusMutationChannel: DEFAULT_EVENT_BUS_MUTATION_CHANNEL,
   formatters: {
     prettier: {
-      command: ["prettier", "--write", "$FILE"],
+      command: ["prettier", "--write"],
       extensions: [
         ".js",
         ".cjs",
@@ -71,7 +71,7 @@ export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
       ],
     },
     "markdownlint-cli2": {
-      command: ["markdownlint-cli2", "--fix", "$FILE"],
+      command: ["markdownlint-cli2", "--fix"],
       extensions: [".md"],
     },
   },

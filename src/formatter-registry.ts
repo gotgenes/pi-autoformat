@@ -18,44 +18,6 @@ export type ResolvedFormatter = {
   environment?: Record<string, string>;
 };
 
-export function resolveFormatterChainForFile(
-  filePath: string,
-  config: FormatterConfig,
-): ResolvedFormatter[] {
-  const extension = path.extname(filePath).toLowerCase();
-  if (!extension) {
-    return [];
-  }
-
-  const chainNames = config.chains?.[extension];
-  if (!chainNames) {
-    return [];
-  }
-
-  return chainNames
-    .map((formatterName) =>
-      resolveFormatterByName(formatterName, filePath, config),
-    )
-    .filter((formatter): formatter is ResolvedFormatter => formatter !== null);
-}
-
-function resolveFormatterByName(
-  formatterName: string,
-  filePath: string,
-  config: FormatterConfig,
-): ResolvedFormatter | null {
-  const formatter = config.formatters[formatterName];
-  if (!formatter || formatter.disabled) {
-    return null;
-  }
-
-  return {
-    name: formatterName,
-    command: substituteFileToken(formatter.command, filePath),
-    environment: formatter.environment,
-  };
-}
-
 export type ChainGroup = {
   chain: string[];
   files: string[];
@@ -109,6 +71,4 @@ export function resolveChain(
   return resolved;
 }
 
-function substituteFileToken(command: string[], filePath: string): string[] {
-  return command.map((arg) => arg.replaceAll("$FILE", filePath));
-}
+

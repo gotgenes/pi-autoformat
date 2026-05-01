@@ -29,19 +29,23 @@ export {
   type UserFormatterConfig,
 } from "./formatter-config.js";
 export {
+  type BatchRun,
+  type ChainGroupInput,
   type CommandRunner,
   type CommandRunnerOptions,
   type CommandRunResult,
-  executeFormatterChain,
-  type FormatterExecutionResult,
+  executeChainGroup,
 } from "./formatter-executor.js";
 export {
+  type ChainGroup,
   type FormatterConfig,
   type FormatterDefinition,
+  groupFilesByChain,
   type ResolvedFormatter,
-  resolveFormatterChainForFile,
+  resolveChain,
 } from "./formatter-registry.js";
 export {
+  type ChainGroupResult,
   PromptAutoformatter,
   type PromptAutoformatterResult,
 } from "./prompt-autoformatter.js";
