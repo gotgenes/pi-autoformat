@@ -32,11 +32,11 @@ Latest:
   "hideSummariesInTui": false,
   "formatters": {
     "prettier": {
-      "command": ["prettier", "--write", "$FILE"],
+      "command": ["prettier", "--write"],
       "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
     },
     "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix", "$FILE"],
+      "command": ["markdownlint-cli2", "--fix"],
       "extensions": [".md"]
     }
   },
@@ -235,7 +235,11 @@ Each formatter can define:
 - `environment?: Record<string, string>`
 - `disabled?: boolean`
 
-`$FILE` is replaced with the absolute path to the touched file.
+**Batch dispatch.** Touched file paths are appended to `command` as
+trailing arguments. The executor runs each formatter once per chain
+group, passing every file in the group as a single invocation. Do not
+include file paths or the legacy `$FILE` token in `command` — it is
+rejected at config-load time.
 
 For v1, formatter command resolution stays intentionally simple:
 
@@ -250,11 +254,11 @@ Example:
 {
   "formatters": {
     "prettier": {
-      "command": ["pnpm", "exec", "prettier", "--write", "$FILE"],
+      "command": ["pnpm", "exec", "prettier", "--write"],
       "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
     },
     "markdownlint-cli2": {
-      "command": ["pnpm", "exec", "markdownlint-cli2", "--fix", "$FILE"],
+      "command": ["pnpm", "exec", "markdownlint-cli2", "--fix"],
       "extensions": [".md"],
       "environment": {
         "CI": "1"

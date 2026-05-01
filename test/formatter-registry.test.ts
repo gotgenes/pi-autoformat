@@ -140,7 +140,10 @@ describe("resolveChain", () => {
   });
 
   it("skips disabled formatters", () => {
-    const resolved = resolveChain(["prettier", "disabled", "markdownlint"], config);
+    const resolved = resolveChain(
+      ["prettier", "disabled", "markdownlint"],
+      config,
+    );
 
     expect(resolved.map((entry) => entry.name)).toEqual([
       "prettier",
@@ -158,5 +161,3 @@ describe("resolveChain", () => {
     expect(resolveChain([], config)).toEqual([]);
   });
 });
-
-

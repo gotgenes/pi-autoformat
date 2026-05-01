@@ -79,11 +79,11 @@ Example:
   "hideSummariesInTui": false,
   "formatters": {
     "prettier": {
-      "command": ["prettier", "--write", "$FILE"],
+      "command": ["prettier", "--write"],
       "extensions": [".js", ".ts", ".tsx", ".json", ".md"]
     },
     "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix", "$FILE"],
+      "command": ["markdownlint-cli2", "--fix"],
       "extensions": [".md"]
     }
   },
@@ -109,7 +109,7 @@ Formatter command resolution in v1 stays intentionally simple:
 By default, `pi-autoformat` reports:
 
 - concise success summaries after formatting runs
-- per-file failure summaries when one or more formatter commands fail
+- per-batch failure summaries when one or more formatter commands fail
 - config validation issues detected while loading global or project config
 
 In the interactive TUI, these appear as notifications.
@@ -127,7 +127,10 @@ Each formatter entry can define:
 - `environment?: Record<string, string>`
 - `disabled?: boolean`
 
-`$FILE` is replaced with the absolute path of the touched file.
+Touched file paths are appended to `command` as trailing arguments;
+each chain step runs once per group of files that share the same
+chain. Do not include `$FILE` in `command` — it is rejected at
+config-load time.
 
 Chains are configured separately so formatter order is explicit.
 

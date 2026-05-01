@@ -53,12 +53,7 @@ describe("executeChainGroup", () => {
       },
       {
         formatterName: "markdownlint",
-        command: [
-          "markdownlint-cli2",
-          "--fix",
-          "/repo/a.md",
-          "/repo/b.md",
-        ],
+        command: ["markdownlint-cli2", "--fix", "/repo/a.md", "/repo/b.md"],
         files: ["/repo/a.md", "/repo/b.md"],
         success: true,
         exitCode: 0,

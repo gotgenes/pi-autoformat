@@ -332,7 +332,8 @@ function defaultReportFlushResult(
 
   const failureSummary = summarizeFailures(result);
   if (failureSummary.lines.length > 0) {
-    const batchWord = failureSummary.failedBatchCount === 1 ? "batch" : "batches";
+    const batchWord =
+      failureSummary.failedBatchCount === 1 ? "batch" : "batches";
     reportMessage(
       options.ctx,
       [
