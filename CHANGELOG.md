@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.2.0](https://github.com/gotgenes/pi-autoformat/compare/v2.1.0...v2.2.0) (2026-05-02)
+
+
+### Features
+
+* add /retro slash command for end-of-flow retrospectives ([09a50ed](https://github.com/gotgenes/pi-autoformat/commit/09a50ed78b18ae48633759f75d423b03df118138))
+* clear autoformat status on session lifecycle boundaries ([4834d45](https://github.com/gotgenes/pi-autoformat/commit/4834d452cb5cfd99f8988b40d9a05dbb8da1e720))
+* keep failure notifications and add persistent failure status ([9ece2b8](https://github.com/gotgenes/pi-autoformat/commit/9ece2b8c64fa9730c91080bd190bdcfcbf87472b))
+* render formatter success summaries in the footer status ([2a37b1b](https://github.com/gotgenes/pi-autoformat/commit/2a37b1bd5fb04c1f3dd2630daa139ca0c87425d2))
+* respect hideSummariesInTui for footer status ([3cf8548](https://github.com/gotgenes/pi-autoformat/commit/3cf8548d7e63d6b0cd78f1e0c5953ec67624df10))
+
+
+### Documentation
+
+* add frontmatter convention to plans and retros ([2648129](https://github.com/gotgenes/pi-autoformat/commit/26481296025d41076761437b3e97d50789b2fa3e))
+* describe footer-status formatter summaries ([1df2550](https://github.com/gotgenes/pi-autoformat/commit/1df2550720c368145e3e927f0cecc6782939555f))
+* plan richer TUI formatter summaries via footer status ([#1](https://github.com/gotgenes/pi-autoformat/issues/1)) ([a50fba9](https://github.com/gotgenes/pi-autoformat/commit/a50fba9b707ce6831547411ddf539d872bfcc2a4))
+* **retro:** add retro notes for issue [#13](https://github.com/gotgenes/pi-autoformat/issues/13) ([9591d5a](https://github.com/gotgenes/pi-autoformat/commit/9591d5a6df28262c2e40e1457c76504cc3e7315b))
+
 ## [2.1.0](https://github.com/gotgenes/pi-autoformat/compare/v2.0.0...v2.1.0) (2026-05-01)
 
 
