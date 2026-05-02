@@ -50,7 +50,7 @@ Pinned tag:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/v1.0.0/schemas/pi-autoformat.schema.json"
+  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/v2.4.1/schemas/pi-autoformat.schema.json"
 }
 ```
 
@@ -305,7 +305,7 @@ group, passing every file in the group as a single invocation. Do not
 include file paths or the legacy `$FILE` token in `command` — it is
 rejected at config-load time.
 
-For v1, formatter command resolution stays intentionally simple:
+Formatter command resolution stays intentionally simple:
 
 - commands run from the project `cwd`
 - commands inherit the extension process environment and `PATH`
@@ -334,7 +334,7 @@ Example:
 
 Ordered formatter chains keyed by file extension.
 
-For v1, formatter execution is driven by explicit `chains` only.
+Formatter execution is driven by explicit `chains` only.
 If an extension has no `chains` entry, `pi-autoformat` does not run any formatter for that extension.
 
 The chain order is explicit and should be preserved.
