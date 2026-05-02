@@ -33,13 +33,39 @@ const COMMAND_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 
 type NotificationType = "info" | "warning" | "error";
 
+type ThemeColorName =
+  | "success"
+  | "warning"
+  | "error"
+  | "dim"
+  | "accent";
+
+type ExtensionUILike = {
+  notify(message: string, type?: NotificationType): void;
+  setStatus?(key: string, text: string | undefined): void;
+  theme?: { fg(name: ThemeColorName | string, text: string): string };
+};
+
 type ExtensionContextLike = {
   cwd: string;
   hasUI: boolean;
-  ui: {
-    notify(message: string, type?: NotificationType): void;
-  };
+  ui: ExtensionUILike;
 };
+
+const AUTOFORMAT_STATUS_KEY = "autoformat";
+
+function setAutoformatStatus(
+  ctx: ExtensionContextLike,
+  text: string | undefined,
+): void {
+  if (!ctx.hasUI) {
+    return;
+  }
+  if (typeof ctx.ui.setStatus !== "function") {
+    return;
+  }
+  ctx.ui.setStatus(AUTOFORMAT_STATUS_KEY, text);
+}
 
 type TextContentLike = { type?: string; text?: string };
 
@@ -353,6 +379,7 @@ function defaultReportFlushResult(
   },
 ): void {
   if (result.groups.length === 0) {
+    setAutoformatStatus(options.ctx, undefined);
     return;
   }
 

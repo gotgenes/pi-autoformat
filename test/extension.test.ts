@@ -23,6 +23,8 @@ type TestContext = {
   hasUI: boolean;
   ui: {
     notify(message: string, type?: "info" | "warning" | "error"): void;
+    setStatus?: (key: string, text: string | undefined) => void;
+    theme?: { fg: (name: string, text: string) => string };
   };
 };
 
@@ -95,6 +97,8 @@ function createContext(overrides?: Partial<TestContext>): TestContext {
     hasUI: true,
     ui: {
       notify: vi.fn(),
+      setStatus: vi.fn(),
+      theme: { fg: (_name: string, text: string) => text },
     },
     ...overrides,
   };
@@ -121,6 +125,34 @@ function createFlushResult(): PromptAutoformatterResult {
 }
 
 describe("createAutoformatExtension", () => {
+  it("clears the autoformat status on an empty flush in the TUI", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(setStatus).toHaveBeenCalledWith("autoformat", undefined);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
   it("reports interactive success summaries with touched file paths", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
