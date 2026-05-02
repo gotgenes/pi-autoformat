@@ -153,12 +153,15 @@ describe("createAutoformatExtension", () => {
     expect(notify).not.toHaveBeenCalled();
   });
 
-  it("reports interactive success summaries with touched file paths", async () => {
+  it("reports interactive success summaries via the footer status", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
+    const setStatus = vi.fn();
     const ctx = createContext({
       ui: {
         notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
       },
     });
 
@@ -187,18 +190,29 @@ describe("createAutoformatExtension", () => {
     });
 
     await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
     await pi.emit("agent_end", {}, ctx);
 
-    expect(notify).toHaveBeenCalledWith(
-      "Autoformatted 2 files: /repo/src/example.ts, /repo/README.md",
-      "info",
-    );
+    expect(setStatus).toHaveBeenCalledTimes(1);
+    const [statusKey, statusText] = setStatus.mock.calls[0];
+    expect(statusKey).toBe("autoformat");
+    expect(statusText).toContain("autoformat:");
+    expect(statusText).toContain("2 files");
+    expect(statusText).toContain("prettier");
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it("counts files across multiple groups in the success summary", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
-    const ctx = createContext({ ui: { notify } });
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
 
     createAutoformatExtension(pi, {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
@@ -245,12 +259,14 @@ describe("createAutoformatExtension", () => {
     });
 
     await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
     await pi.emit("agent_end", {}, ctx);
 
-    expect(notify).toHaveBeenCalledWith(
-      "Autoformatted 3 files: /repo/a.ts, /repo/b.ts, /repo/c.md",
-      "info",
-    );
+    const [, statusText] = setStatus.mock.calls[0];
+    expect(statusText).toContain("3 files");
+    expect(statusText).toContain("prettier");
+    expect(statusText).toContain("markdownlint");
+    expect(notify).not.toHaveBeenCalled();
   });
 
   it("reports per-batch failure lines listing each batch's files", async () => {
@@ -294,7 +310,14 @@ describe("createAutoformatExtension", () => {
   it("renders fallback context in success summaries when present", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
-    const ctx = createContext({ ui: { notify } });
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
 
     createAutoformatExtension(pi, {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
@@ -322,11 +345,12 @@ describe("createAutoformatExtension", () => {
     });
 
     await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
     await pi.emit("agent_end", {}, ctx);
 
-    const messages = notify.mock.calls.map((call) => call[0] as string);
+    const statusTexts = setStatus.mock.calls.map((c) => c[1] as string);
     expect(
-      messages.some((m) =>
+      statusTexts.some((m) =>
         /prettier \(fallback after biome unavailable\)/.test(m),
       ),
     ).toBe(true);
@@ -374,9 +398,12 @@ describe("createAutoformatExtension", () => {
   it("hides interactive success summaries when configured", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
+    const setStatus = vi.fn();
     const ctx = createContext({
       ui: {
         notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
       },
     });
 
@@ -395,9 +422,11 @@ describe("createAutoformatExtension", () => {
     });
 
     await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
     await pi.emit("agent_end", {}, ctx);
 
     expect(notify).not.toHaveBeenCalled();
+    expect(setStatus).toHaveBeenCalledWith("autoformat", undefined);
   });
 
   it("reports non-interactive formatter failures via console warnings", async () => {

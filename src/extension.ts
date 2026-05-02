@@ -371,6 +371,114 @@ function summarizeSuccessPaths(files: string[]): string | undefined {
   return files.join(", ");
 }
 
+type FlushSummary = {
+  groupCount: number;
+  fileCount: number;
+  successBatchCount: number;
+  failureBatchCount: number;
+  failureLines: string[];
+  formatterLabels: string[];
+  fallbackUsages: string[];
+};
+
+function summarizeFlush(result: PromptAutoformatterResult): FlushSummary {
+  const failureSummary = summarizeFailures(result);
+  const fallbackUsages = summarizeFallbackUsages(result);
+  const fileCount = collectAllFiles(result).length;
+
+  const seen = new Set<string>();
+  const formatterLabels: string[] = [];
+  let successBatchCount = 0;
+  for (const group of result.groups) {
+    for (const run of group.runs) {
+      if (run.success) {
+        successBatchCount += 1;
+      }
+      const label = formatterLabel(run.formatterName, run.fallbackContext);
+      if (!seen.has(label)) {
+        seen.add(label);
+        formatterLabels.push(label);
+      }
+    }
+  }
+
+  return {
+    groupCount: result.groups.length,
+    fileCount,
+    successBatchCount,
+    failureBatchCount: failureSummary.failedBatchCount,
+    failureLines: failureSummary.lines,
+    formatterLabels,
+    fallbackUsages,
+  };
+}
+
+function themed(
+  ctx: ExtensionContextLike,
+  color: ThemeColorName,
+  text: string,
+): string {
+  const fg = ctx.ui.theme?.fg;
+  if (typeof fg !== "function") {
+    return text;
+  }
+  return fg(color, text);
+}
+
+function formatStatusLine(
+  summary: FlushSummary,
+  ctx: ExtensionContextLike,
+): string {
+  const fileWord = summary.fileCount === 1 ? "file" : "files";
+  const formatters =
+    summary.formatterLabels.length > 0
+      ? ` (${summary.formatterLabels.join(", ")})`
+      : "";
+  const label = themed(ctx, "dim", "autoformat:");
+
+  if (summary.failureBatchCount > 0) {
+    const batchWord = summary.failureBatchCount === 1 ? "batch" : "batches";
+    const mark = themed(ctx, "error", "\u2717");
+    const failureClause = themed(
+      ctx,
+      "error",
+      `${summary.failureBatchCount} ${batchWord} failed`,
+    );
+    const okSuffix =
+      summary.successBatchCount > 0
+        ? themed(ctx, "dim", ` \u2014 ${summary.successBatchCount} ok`)
+        : "";
+    return `${mark} ${label} ${failureClause}${formatters}${okSuffix}`;
+  }
+
+  const mark = themed(ctx, "success", "\u2713");
+  return `${mark} ${label} ${summary.fileCount} ${fileWord}${formatters}`;
+}
+
+function buildLegacyFailureMessage(summary: FlushSummary): string {
+  const batchWord = summary.failureBatchCount === 1 ? "batch" : "batches";
+  return [
+    `Formatter failures in ${summary.failureBatchCount} ${batchWord}:`,
+    ...summary.failureLines,
+  ].join("\n");
+}
+
+function buildLegacySuccessMessage(
+  result: PromptAutoformatterResult,
+  summary: FlushSummary,
+): string {
+  const allFiles = collectAllFiles(result);
+  const successPaths = summarizeSuccessPaths(allFiles);
+  const fileWord = allFiles.length === 1 ? "file" : "files";
+  const baseMessage = successPaths
+    ? `Autoformatted ${allFiles.length} ${fileWord}: ${successPaths}`
+    : `Autoformatted ${allFiles.length} ${fileWord}.`;
+
+  return summary.fallbackUsages.length > 0
+    ? `${baseMessage} [${summary.fallbackUsages.join("; ")}]`
+    : baseMessage;
+}
+
 function defaultReportFlushResult(
   result: PromptAutoformatterResult,
   options: {
@@ -383,39 +491,28 @@ function defaultReportFlushResult(
     return;
   }
 
-  const failureSummary = summarizeFailures(result);
-  if (failureSummary.lines.length > 0) {
-    const batchWord =
-      failureSummary.failedBatchCount === 1 ? "batch" : "batches";
-    reportMessage(
-      options.ctx,
-      [
-        `Formatter failures in ${failureSummary.failedBatchCount} ${batchWord}:`,
-        ...failureSummary.lines,
-      ].join("\n"),
-      "warning",
-    );
+  const summary = summarizeFlush(result);
+
+  if (summary.failureBatchCount > 0) {
+    const message = buildLegacyFailureMessage(summary);
+    reportMessage(options.ctx, message, "warning");
     return;
   }
 
   if (options.config.hideSummariesInTui && options.ctx.hasUI) {
+    setAutoformatStatus(options.ctx, undefined);
     return;
   }
 
-  const allFiles = collectAllFiles(result);
-  const successPaths = summarizeSuccessPaths(allFiles);
-  const fileWord = allFiles.length === 1 ? "file" : "files";
-  const baseMessage = successPaths
-    ? `Autoformatted ${allFiles.length} ${fileWord}: ${successPaths}`
-    : `Autoformatted ${allFiles.length} ${fileWord}.`;
+  if (options.ctx.hasUI) {
+    setAutoformatStatus(
+      options.ctx,
+      formatStatusLine(summary, options.ctx),
+    );
+    return;
+  }
 
-  const fallbackUsages = summarizeFallbackUsages(result);
-  const message =
-    fallbackUsages.length > 0
-      ? `${baseMessage} [${fallbackUsages.join("; ")}]`
-      : baseMessage;
-
-  reportMessage(options.ctx, message, "info");
+  reportMessage(options.ctx, buildLegacySuccessMessage(result, summary), "info");
 }
 
 function defaultReportConfigIssues(
