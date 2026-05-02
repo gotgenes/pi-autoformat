@@ -10,14 +10,11 @@
         "biome",
         "check",
         "--write",
-        "--files-ignore-unknown=true",
-        "$FILE"
-      ],
-      "extensions": [".ts", ".json"]
+        "--files-ignore-unknown=true"
+      ]
     },
     "markdownlint-cli2": {
-      "command": ["pnpm", "exec", "markdownlint-cli2", "--fix", "$FILE"],
-      "extensions": [".md"]
+      "command": ["pnpm", "exec", "markdownlint-cli2", "--fix"]
     }
   },
   "chains": {
