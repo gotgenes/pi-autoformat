@@ -212,7 +212,15 @@ scope filter as every other mutation source.
 
 ### `hideSummariesInTui`
 
-Whether formatter summaries should be hidden in the interactive TUI.
+Whether formatter **success** summaries should be hidden in the interactive TUI.
+
+When the extension is loaded in a Pi UI, each prompt-end flush updates a persistent footer status line (`setStatus("autoformat", ...)`).
+A happy-path flush renders a one-line success indicator like `✓ autoformat: 3 files (biome, prettier)`.
+Failures additionally fire a `notify(..., "warning")` toast and leave an error-styled status (`✗ autoformat: 1 batch failed (prettier) — 2 ok`) so the user can revisit them later in the session.
+
+Set `hideSummariesInTui` to `true` to suppress the success status line.
+Failures still surface via both the warning notification and an error-styled footer status regardless of this setting.
+In non-interactive contexts (no UI), this setting has no effect — summaries go to `console.log` / `console.warn` as before.
 
 Example:
 

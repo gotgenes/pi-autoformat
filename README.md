@@ -105,11 +105,13 @@ By default, `pi-autoformat` reports:
 - per-batch failure summaries when one or more formatter commands fail
 - config validation issues detected while loading global or project config
 
-In the interactive TUI, these appear as notifications.
+In the interactive TUI, success summaries render as a persistent one-line footer status (e.g. `✓ autoformat: 3 files (biome, prettier)`) instead of a transient notification, so you can see at a glance that formatters ran in the background.
+Failures both fire a warning notification (so they catch your eye once) and leave an error-styled footer status (e.g. `✗ autoformat: 1 batch failed (prettier)`) that persists until the next flush, so a dismissed toast does not lose the failure.
 
-Outside the TUI, they are written as prefixed log lines.
+Outside the TUI, summaries are written as prefixed log lines on `stdout` / `stderr` (`console.log` / `console.warn`).
 
-Set `hideSummariesInTui` to `true` if you want to suppress interactive success summaries while still surfacing failures.
+Set `hideSummariesInTui` to `true` if you want to suppress the interactive success status line.
+Failures still surface via both the notification and the footer status regardless of this setting.
 
 ## Formatter model
 
