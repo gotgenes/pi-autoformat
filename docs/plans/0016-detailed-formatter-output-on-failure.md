@@ -127,7 +127,7 @@ Per run, per stream:
 2. If `Buffer.byteLength(text, "utf8") > maxBytes`, keep the **last** `maxBytes` bytes, snap forward to the next newline boundary so we never bisect a multi-byte character mid-sequence, and prefix with `... (truncated, N earlier bytes)`.
    The tail is what users want for a stack trace / parser error.
 3. If the resulting line count exceeds `maxLines`, keep the last `maxLines` lines and prefix with `... (truncated, N more lines)`.
-4. Indent every surviving line by 4 spaces under the `  stderr:` / `  stdout:` header (2-space header indent, 4-space body indent — matches existing failure-line conventions).
+4. Indent every surviving line by 4 spaces under the `stderr:` / `stdout:` header (2-space header indent, 4-space body indent — matches existing failure-line conventions).
 
 The byte cap runs first because some formatters emit megabyte-scale output; line cap is the secondary safety net for line-noisy output that fits under the byte cap.
 Counts in the truncation marker reflect what was dropped from the original.
