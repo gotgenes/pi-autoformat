@@ -502,6 +502,62 @@ describe("createAutoformatExtension", () => {
     expect(setStatus).toHaveBeenCalledWith("autoformat", undefined);
   });
 
+  it("still surfaces failures when hideSummariesInTui is true", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult("prompt"),
+        config: createFormatterConfig({
+          formatMode: "prompt",
+          hideSummariesInTui: true,
+        }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/a.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/a.ts"],
+                  success: false,
+                  exitCode: 2,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining("prettier (exit 2): /repo/a.ts"),
+      "warning",
+    );
+    const failureStatus = setStatus.mock.calls.find(
+      (c) => c[1] !== undefined,
+    );
+    expect(failureStatus?.[1]).toContain("1 batch failed");
+  });
+
   it("reports non-interactive formatter failures via console warnings", async () => {
     const pi = new TestPi();
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
