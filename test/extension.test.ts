@@ -272,7 +272,11 @@ describe("createAutoformatExtension", () => {
   it("reports per-batch failure lines listing each batch's files", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
-    const ctx = createContext({ ui: { notify } });
+    const setStatus = vi.fn();
+    const fg = vi.fn((_name: string, text: string) => text);
+    const ctx = createContext({
+      ui: { notify, setStatus, theme: { fg } },
+    });
 
     createAutoformatExtension(pi, {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
@@ -305,6 +309,75 @@ describe("createAutoformatExtension", () => {
       "Formatter failures in 1 batch:\nprettier (exit 2): /repo/a.ts, /repo/b.ts",
       "warning",
     );
+    const failureStatusCalls = setStatus.mock.calls.filter(
+      (c) => c[1] !== undefined,
+    );
+    expect(failureStatusCalls).toHaveLength(1);
+    const [statusKey, statusText] = failureStatusCalls[0];
+    expect(statusKey).toBe("autoformat");
+    expect(statusText).toContain("1 batch failed");
+    expect(statusText).toContain("prettier");
+    expect(fg).toHaveBeenCalledWith("error", expect.any(String));
+  });
+
+  it("shows mixed-result failures with surviving success batches in the status", async () => {
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify,
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier", "markdownlint"],
+              files: ["/repo/x.md"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/x.md"],
+                  success: true,
+                  exitCode: 0,
+                },
+                {
+                  formatterName: "markdownlint",
+                  command: [],
+                  files: ["/repo/x.md"],
+                  success: false,
+                  exitCode: 1,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.stringContaining("markdownlint (exit 1): /repo/x.md"),
+      "warning",
+    );
+    const failureStatus = setStatus.mock.calls.find(
+      (c) => c[1] !== undefined,
+    );
+    expect(failureStatus).toBeDefined();
+    const text = failureStatus?.[1] as string;
+    expect(text).toContain("1 batch failed");
+    expect(text).toContain("1 ok");
   });
 
   it("renders fallback context in success summaries when present", async () => {

@@ -495,6 +495,12 @@ function defaultReportFlushResult(
 
   if (summary.failureBatchCount > 0) {
     const message = buildLegacyFailureMessage(summary);
+    if (options.ctx.hasUI) {
+      setAutoformatStatus(
+        options.ctx,
+        formatStatusLine(summary, options.ctx),
+      );
+    }
     reportMessage(options.ctx, message, "warning");
     return;
   }
