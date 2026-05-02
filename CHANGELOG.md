@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.0.1](https://github.com/gotgenes/pi-autoformat/compare/v3.0.0...v3.0.1) (2026-05-02)
+
+
+### Bug Fixes
+
+* remove default formatter chains to prevent unwanted formatting ([48f690e](https://github.com/gotgenes/pi-autoformat/commit/48f690e243fd41e789e8a6281d32067218a6ccb5))
+
+
+### Documentation
+
+* update README and configuration for no default chains ([6e7015b](https://github.com/gotgenes/pi-autoformat/commit/6e7015bf72cbf66b6dde164a7ed5e7d79be7544f))
+
 ## [3.0.0](https://github.com/gotgenes/pi-autoformat/compare/v2.4.2...v3.0.0) (2026-05-02)
 
 
