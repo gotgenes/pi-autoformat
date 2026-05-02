@@ -225,7 +225,16 @@ If the new tests expose a real bug, that bug is fixed in its own commit on the s
 
 ## Open Questions
 
-- Does Pi's RPC mode let a companion extension emit a `tool_result` event for a tool the LLM never called?
-  If yes, the custom-tool scenario can be fully deterministic; if no, we accept the EventBus path as the primary acceptance signal and treat custom-tool dispatch as covered by unit tests + (eventually) LLM-gated runs.
 - Should `formatter-recorder` be a POSIX shell script or a Node script?
-  Pick during step 2 based on the project's existing CI matrix; Node is more portable, shell is simpler.
+  Resolved during execution: chose `formatter-recorder.mjs` (Node) for portability.
+
+## Execution Notes
+
+- Step 2 (bash mutation acceptance) and step 4 (`customMutationTools` acceptance) were **deferred** during execution.
+  Empirical probing (and Pi's `docs/rpc.md`) confirmed that the RPC `bash` command does not emit `tool_call` / `tool_result` events; it only stores a `BashExecutionMessage` for the next prompt's LLM context.
+  Likewise, slash commands run extension code directly without going through tool dispatch, so a fixture extension cannot synthesize a `tool_result` event for a registered custom tool.
+  Both scenarios therefore require a real LLM-driven tool invocation and have been moved into the future LLM-gated suite documented in `docs/testing.md`.
+- The plan's example payload `{ touched: string[] }` for the EventBus channel was incorrect.
+  The real contract handled by `parseTouchedPayload` is `{ path: string }` or `{ paths: string[] }`; the fixture and test now use `{ paths }`.
+- macOS resolves `/var` to `/private/var` via realpath.
+  The acceptance test calls `realpathSync` on its temp `cwd` so assertions on the recorder's `process.cwd()` match what Pi spawns the formatter with.

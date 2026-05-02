@@ -258,6 +258,8 @@ pnpm test
 pnpm run lint
 ```
 
+See [`docs/testing.md`](docs/testing.md) for the layout of unit, acceptance, and (future) LLM-gated test suites, and how the acceptance harness resolves the `pi` binary from `node_modules/.bin/pi`.
+
 ## License
 
 MIT
