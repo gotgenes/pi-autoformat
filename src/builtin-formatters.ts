@@ -102,14 +102,34 @@ function hasTreefmtNixConfig(dir: string): boolean {
   );
 }
 
+function treefmtConfigPath(root: string): string {
+  // treefmt itself prefers treefmt.toml over .treefmt.toml. Default to the
+  // canonical name when both/neither exist so callers that haven't created
+  // the file on disk still get a sensible argv.
+  const canonical = path.join(root, "treefmt.toml");
+  const dotted = path.join(root, ".treefmt.toml");
+  if (!existsSync(canonical) && existsSync(dotted)) {
+    return dotted;
+  }
+  return canonical;
+}
+
 const treefmt: BuiltinFormatter = {
   name: "treefmt",
   async discoverRoot(files, context) {
     return walkUp(files, hasTreefmtConfig, context?.cache);
   },
-  buildCommand(_root, _files) {
-    // Command builder is implemented in a later TDD step.
-    return { command: ["treefmt"], cwd: _root };
+  buildCommand(root, files) {
+    return {
+      command: [
+        "treefmt",
+        "--config-file",
+        treefmtConfigPath(root),
+        "--",
+        ...files,
+      ],
+      cwd: root,
+    };
   },
   partitionUnhandled(_run, files) {
     // Skip-pattern parsing is implemented in a later TDD step.
@@ -122,8 +142,18 @@ const treefmtNix: BuiltinFormatter = {
   async discoverRoot(files, context) {
     return walkUp(files, hasTreefmtNixConfig, context?.cache);
   },
-  buildCommand(_root, _files) {
-    return { command: ["nix", "fmt"], cwd: _root };
+  buildCommand(root, files) {
+    return {
+      command: [
+        "nix",
+        "fmt",
+        "--no-update-lock-file",
+        "--no-write-lock-file",
+        "--",
+        ...files,
+      ],
+      cwd: root,
+    };
   },
   partitionUnhandled(_run, files) {
     return { handled: [...files], unhandled: [], treatAsSkip: false };

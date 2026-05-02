@@ -160,6 +160,70 @@ describe("treefmt discovery", () => {
   });
 });
 
+describe("treefmt command builder", () => {
+  it("invokes treefmt with --config-file at the discovered root", () => {
+    const root = "/repo";
+    const built = BUILTIN_FORMATTERS.treefmt.buildCommand(root, [
+      "/repo/a.ts",
+      "/repo/b.md",
+    ]);
+    expect(built.cwd).toBe(root);
+    expect(built.command).toEqual([
+      "treefmt",
+      "--config-file",
+      path.join(root, "treefmt.toml"),
+      "--",
+      "/repo/a.ts",
+      "/repo/b.md",
+    ]);
+  });
+
+  it("prefers treefmt.toml over .treefmt.toml when both exist", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "pi-autofmt-tfb-"));
+    writeFileSync(path.join(dir, "treefmt.toml"), "");
+    writeFileSync(path.join(dir, ".treefmt.toml"), "");
+    try {
+      const built = BUILTIN_FORMATTERS.treefmt.buildCommand(dir, [
+        path.join(dir, "a.ts"),
+      ]);
+      expect(built.command[2]).toBe(path.join(dir, "treefmt.toml"));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("falls back to .treefmt.toml when only the dotfile exists", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "pi-autofmt-tfd-"));
+    writeFileSync(path.join(dir, ".treefmt.toml"), "");
+    try {
+      const built = BUILTIN_FORMATTERS.treefmt.buildCommand(dir, [
+        path.join(dir, "a.ts"),
+      ]);
+      expect(built.command[2]).toBe(path.join(dir, ".treefmt.toml"));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("treefmt-nix command builder", () => {
+  it("invokes nix fmt with no-update/no-write flags from the flake root", () => {
+    const root = "/repo";
+    const built = BUILTIN_FORMATTERS["treefmt-nix"].buildCommand(root, [
+      "/repo/a.ts",
+    ]);
+    expect(built.cwd).toBe(root);
+    expect(built.command).toEqual([
+      "nix",
+      "fmt",
+      "--no-update-lock-file",
+      "--no-write-lock-file",
+      "--",
+      "/repo/a.ts",
+    ]);
+  });
+});
+
 describe("treefmt-nix discovery", () => {
   let tmp: string;
 
