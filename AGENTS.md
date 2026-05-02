@@ -81,6 +81,8 @@ issue_title: "Batch-by-default formatter dispatch"     # required
 - Test multiple formatter chains for the same file type.
 - Add focused tests for config loading, merge precedence, and validation issues.
 - Add extension lifecycle tests once the runtime entrypoint exists.
+- Vitest uses esbuild and does not typecheck.
+  Run `pnpm run typecheck` for type-only changes (red/green via `tsc --noEmit`).
 
 ## Commits
 

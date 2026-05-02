@@ -31,7 +31,8 @@
     "lint:md:fix": "pnpm exec markdownlint-cli2 --fix '*.md' 'docs/**/*.md'",
     "format": "pnpm exec biome check --write --files-ignore-unknown=true .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
