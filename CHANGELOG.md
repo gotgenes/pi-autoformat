@@ -1,5 +1,27 @@
 # Changelog
 
+## [2.4.0](https://github.com/gotgenes/pi-autoformat/compare/v2.3.2...v2.4.0) (2026-05-02)
+
+
+### Features
+
+* accept built-in names in chains validation ([e96d346](https://github.com/gotgenes/pi-autoformat/commit/e96d3461e2c3a27173046e30021ba55bb35a2e25))
+* allow wildcard chain key in schema ([a11d4b3](https://github.com/gotgenes/pi-autoformat/commit/a11d4b3d225c077e6f4dbb209610bf4df3507605))
+* build treefmt and treefmt-nix invocations ([cc1f32a](https://github.com/gotgenes/pi-autoformat/commit/cc1f32a26c5c3b237ad88172993539f67a699ed2))
+* discover treefmt and treefmt-nix config roots ([53141d2](https://github.com/gotgenes/pi-autoformat/commit/53141d22e5b529eb2f62b652fbdafd93ebb56105))
+* dispatch wildcard chain before per-extension chains ([07758b0](https://github.com/gotgenes/pi-autoformat/commit/07758b07fae49a99850184ce892281303b93f537))
+* group files by wildcard chain first ([c15b4d2](https://github.com/gotgenes/pi-autoformat/commit/c15b4d2fff41ef40391cfef33ca0f44667e0c535))
+* parse treefmt skip patterns ([973f7e4](https://github.com/gotgenes/pi-autoformat/commit/973f7e42984f7089a3be26e6ff135f93b65d8558))
+* partition built-in batches by handled set ([08f8016](https://github.com/gotgenes/pi-autoformat/commit/08f8016adfc3f8db6e866cef16e9292f6f5487a7))
+* prefer treefmt-nix over treefmt at same root ([c3625f3](https://github.com/gotgenes/pi-autoformat/commit/c3625f31fa4d4968ce203f95609481abe2db20bd))
+* register treefmt and treefmt-nix as built-in formatters ([7e53dfb](https://github.com/gotgenes/pi-autoformat/commit/7e53dfb495c2faa2f2c63a728973929796c70f0e))
+
+
+### Documentation
+
+* document built-in treefmt and treefmt-nix support ([82d3511](https://github.com/gotgenes/pi-autoformat/commit/82d351141c39aa47f96f11059fd67d4589d2ad07))
+* plan built-in treefmt and treefmt-nix support ([#15](https://github.com/gotgenes/pi-autoformat/issues/15)) ([2ce1706](https://github.com/gotgenes/pi-autoformat/commit/2ce17061ea36795ce0192f5302037a3e666b66b4))
+
 ## [2.3.2](https://github.com/gotgenes/pi-autoformat/compare/v2.3.1...v2.3.2) (2026-05-02)
 
 
