@@ -326,6 +326,7 @@ describe("loadAutoformatConfig", () => {
     const result = loadAutoformatConfig({ cwd, agentDir });
 
     expect(result.config).not.toHaveProperty("formatMode");
+    expect(result.config.notifyAgent).toBe(false);
     expect(result.config.commandTimeoutMs).toBe(10000);
     expect(result.config.hideSummariesInTui).toBe(false);
     expect(result.issues).toEqual([]);
@@ -787,5 +788,28 @@ describe("validateUserFormatterConfig: eventBusMutationChannel", () => {
     expect(result.issues.map((i) => i.path)).toEqual([
       "eventBusMutationChannel.weird",
     ]);
+  });
+});
+
+describe("validateUserFormatterConfig: notifyAgent", () => {
+  it("accepts notifyAgent as a boolean", () => {
+    const result = validateUserFormatterConfig({
+      notifyAgent: true,
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.notifyAgent).toBe(true);
+  });
+
+  it("rejects non-boolean notifyAgent", () => {
+    const result = validateUserFormatterConfig({
+      notifyAgent: "yes",
+    });
+    expect(result.issues.map((i) => i.path)).toEqual(["notifyAgent"]);
+    expect(result.config.notifyAgent).toBeUndefined();
+  });
+
+  it("defaults to false when not specified", () => {
+    const result = validateUserFormatterConfig({});
+    expect(result.config.notifyAgent).toBeUndefined();
   });
 });

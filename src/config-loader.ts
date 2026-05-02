@@ -993,6 +993,19 @@ function validateConfigObject(
       continue;
     }
 
+    if (key === "notifyAgent") {
+      const notifyAgent = validateBooleanField(
+        "notifyAgent",
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (notifyAgent !== undefined) {
+        config.notifyAgent = notifyAgent;
+      }
+      continue;
+    }
+
     if (key === "commandTimeoutMs") {
       const commandTimeoutMs = validateCommandTimeoutMs(
         entry,
@@ -1126,6 +1139,7 @@ function mergeUserConfigs(
   overrides: UserFormatterConfig,
 ): UserFormatterConfig {
   return {
+    notifyAgent: overrides.notifyAgent ?? base.notifyAgent,
     commandTimeoutMs: overrides.commandTimeoutMs ?? base.commandTimeoutMs,
     hideSummariesInTui: overrides.hideSummariesInTui ?? base.hideSummariesInTui,
     formatScope: overrides.formatScope ?? base.formatScope,

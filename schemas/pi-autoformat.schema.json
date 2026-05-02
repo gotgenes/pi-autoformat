@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Optional schema URL for editor validation and autocomplete."
     },
+    "notifyAgent": {
+      "type": "boolean",
+      "description": "After formatting, send a follow-up message to the agent listing formatted files and any failures, triggering one more agent turn so it can react (e.g. amend a commit or fix formatter errors). Default: false."
+    },
     "commandTimeoutMs": {
       "type": "integer",
       "minimum": 1,
