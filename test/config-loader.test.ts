@@ -266,6 +266,30 @@ describe("validateUserFormatterConfig", () => {
     });
   });
 
+  it("emits a config issue for the legacy formatMode key", () => {
+    const result = validateUserFormatterConfig({
+      formatMode: "prompt",
+    });
+
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        path: "formatMode",
+        message: expect.stringContaining("removed"),
+      }),
+    ]);
+    expect(result.config).not.toHaveProperty("formatMode");
+  });
+
+  it("emits a config issue for any formatMode value including invalid ones", () => {
+    const result = validateUserFormatterConfig({
+      formatMode: "tool",
+    });
+
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0]?.path).toBe("formatMode");
+    expect(result.config).not.toHaveProperty("formatMode");
+  });
+
   it("reports invalid fields and returns only valid fragments", () => {
     const result = validateUserFormatterConfig({
       commandTimeoutMs: 0,
