@@ -224,6 +224,119 @@ describe("treefmt-nix command builder", () => {
   });
 });
 
+describe("treefmt partitionUnhandled", () => {
+  const builtin = BUILTIN_FORMATTERS.treefmt;
+
+  it("marks files reported with 'no formatter for path' as unhandled", () => {
+    const files = ["/repo/a.ts", "/repo/b.unknown", "/repo/c.md"];
+    const stderr = [
+      "treefmt: ran 3 formatters",
+      "WARN no formatter for path: /repo/b.unknown",
+    ].join("\n");
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt",
+        command: ["treefmt"],
+        files,
+        success: true,
+        exitCode: 0,
+        stderr,
+      },
+      files,
+    );
+    expect(part.unhandled).toEqual(["/repo/b.unknown"]);
+    expect(part.handled).toEqual(["/repo/a.ts", "/repo/c.md"]);
+    expect(part.treatAsSkip).toBe(false);
+  });
+
+  it("treats exit-0 with all files unhandled as skip", () => {
+    const files = ["/repo/a.bin"];
+    const stderr = "WARN no formatter for path: /repo/a.bin";
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt",
+        command: ["treefmt"],
+        files,
+        success: true,
+        exitCode: 0,
+        stderr,
+      },
+      files,
+    );
+    expect(part.treatAsSkip).toBe(true);
+  });
+
+  it("reports a non-zero exit with no skip patterns as a real failure", () => {
+    const files = ["/repo/a.ts"];
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt",
+        command: ["treefmt"],
+        files,
+        success: false,
+        exitCode: 2,
+        stderr: "syntax error in /repo/a.ts",
+      },
+      files,
+    );
+    expect(part.treatAsSkip).toBe(false);
+    expect(part.handled).toEqual(files);
+    expect(part.unhandled).toEqual([]);
+  });
+});
+
+describe("treefmt-nix partitionUnhandled", () => {
+  const builtin = BUILTIN_FORMATTERS["treefmt-nix"];
+
+  it("treats 'emitted 0 files for processing' as skip", () => {
+    const files = ["/repo/a.ts", "/repo/b.bin"];
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt-nix",
+        command: ["nix", "fmt"],
+        files,
+        success: true,
+        exitCode: 0,
+        stderr: "emitted 0 files for processing",
+      },
+      files,
+    );
+    expect(part.treatAsSkip).toBe(true);
+  });
+
+  it("treats transient nix daemon errors as skip", () => {
+    const files = ["/repo/a.ts"];
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt-nix",
+        command: ["nix", "fmt"],
+        files,
+        success: false,
+        exitCode: 1,
+        stderr: "error: cannot connect to socket at /nix/var/nix/daemon-socket/socket",
+      },
+      files,
+    );
+    expect(part.treatAsSkip).toBe(true);
+  });
+
+  it("treats unrelated non-zero exits as real failures", () => {
+    const files = ["/repo/a.ts"];
+    const part = builtin.partitionUnhandled(
+      {
+        formatterName: "treefmt-nix",
+        command: ["nix", "fmt"],
+        files,
+        success: false,
+        exitCode: 2,
+        stderr: "some formatter blew up",
+      },
+      files,
+    );
+    expect(part.treatAsSkip).toBe(false);
+  });
+});
+
 describe("treefmt-nix discovery", () => {
   let tmp: string;
 

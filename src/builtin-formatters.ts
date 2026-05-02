@@ -131,11 +131,34 @@ const treefmt: BuiltinFormatter = {
       cwd: root,
     };
   },
-  partitionUnhandled(_run, files) {
-    // Skip-pattern parsing is implemented in a later TDD step.
-    return { handled: [...files], unhandled: [], treatAsSkip: false };
+  partitionUnhandled(run, files) {
+    const stderr = run.stderr ?? "";
+    const unhandled = new Set<string>();
+    // treefmt logs lines like "WARN no formatter for path: /repo/x.bin".
+    const re = /no formatter for path[: ]+(\S+)/g;
+    for (const match of stderr.matchAll(re)) {
+      unhandled.add(match[1]);
+    }
+    const handled = files.filter((f) => !unhandled.has(f));
+    const treatAsSkip =
+      run.exitCode === 0 && unhandled.size > 0 && handled.length === 0;
+    return {
+      handled,
+      unhandled: files.filter((f) => unhandled.has(f)),
+      treatAsSkip,
+    };
   },
 };
+
+const NIX_TRANSIENT_PATTERNS: readonly string[] = [
+  "cannot connect to socket",
+  "error: build of",
+  "error: unable to start any build",
+];
+
+function looksLikeNixTransient(stderr: string): boolean {
+  return NIX_TRANSIENT_PATTERNS.some((p) => stderr.includes(p));
+}
 
 const treefmtNix: BuiltinFormatter = {
   name: "treefmt-nix",
@@ -155,7 +178,14 @@ const treefmtNix: BuiltinFormatter = {
       cwd: root,
     };
   },
-  partitionUnhandled(_run, files) {
+  partitionUnhandled(run, files) {
+    const stderr = run.stderr ?? "";
+    if (
+      stderr.includes("emitted 0 files for processing") ||
+      looksLikeNixTransient(stderr)
+    ) {
+      return { handled: [], unhandled: [...files], treatAsSkip: true };
+    }
     return { handled: [...files], unhandled: [], treatAsSkip: false };
   },
 };
