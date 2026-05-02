@@ -121,7 +121,10 @@ export async function runRpcSession(
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0)
-        .map((line) => JSON.parse(line) as { type: string } & Record<string, unknown>);
+        .map(
+          (line) =>
+            JSON.parse(line) as { type: string } & Record<string, unknown>,
+        );
 
       const responses: RpcResponse[] = [];
       const events: RpcEvent[] = [];
