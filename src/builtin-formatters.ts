@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import type { BatchRun } from "./formatter-executor.js";
 
 export type DiscoveryCache = Map<string, string | null>;
@@ -38,11 +41,71 @@ export type BuiltinFormatter = {
   partitionUnhandled(run: BatchRun, files: string[]): BuiltinPartition;
 };
 
+/**
+ * Walk up from each file's directory looking for the first directory whose
+ * `match(dir)` returns true. Memoizes results in the optional cache, keyed
+ * by visited directory, so repeated calls within a session avoid redundant
+ * stat work.
+ */
+function walkUp(
+  files: string[],
+  match: (dir: string) => boolean,
+  cache?: DiscoveryCache,
+): string | undefined {
+  for (const file of files) {
+    let dir = path.dirname(path.resolve(file));
+    const visited: string[] = [];
+    while (true) {
+      if (cache?.has(dir)) {
+        const cached = cache.get(dir);
+        const resolved = cached ?? undefined;
+        for (const v of visited) {
+          cache.set(v, cached ?? null);
+        }
+        if (resolved) return resolved;
+        break;
+      }
+      visited.push(dir);
+      if (match(dir)) {
+        if (cache) {
+          for (const v of visited) cache.set(v, dir);
+        }
+        return dir;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) {
+        if (cache) {
+          for (const v of visited) cache.set(v, null);
+        }
+        break;
+      }
+      dir = parent;
+    }
+  }
+  return undefined;
+}
+
+function hasTreefmtConfig(dir: string): boolean {
+  return (
+    existsSync(path.join(dir, "treefmt.toml")) ||
+    existsSync(path.join(dir, ".treefmt.toml"))
+  );
+}
+
+function hasTreefmtNixConfig(dir: string): boolean {
+  if (!existsSync(path.join(dir, "flake.nix"))) {
+    return false;
+  }
+  return (
+    existsSync(path.join(dir, "treefmt.nix")) ||
+    existsSync(path.join(dir, "nix", "treefmt.nix"))
+  );
+}
+
 const treefmt: BuiltinFormatter = {
   name: "treefmt",
-  async discoverRoot(): Promise<string | undefined> {
-    // Walker is implemented in a later TDD step.
-    return undefined;
+  async discoverRoot(files, context) {
+    return walkUp(files, hasTreefmtConfig, context?.cache);
   },
   buildCommand(_root, _files) {
     // Command builder is implemented in a later TDD step.
@@ -56,8 +119,8 @@ const treefmt: BuiltinFormatter = {
 
 const treefmtNix: BuiltinFormatter = {
   name: "treefmt-nix",
-  async discoverRoot(): Promise<string | undefined> {
-    return undefined;
+  async discoverRoot(files, context) {
+    return walkUp(files, hasTreefmtNixConfig, context?.cache);
   },
   buildCommand(_root, _files) {
     return { command: ["nix", "fmt"], cwd: _root };

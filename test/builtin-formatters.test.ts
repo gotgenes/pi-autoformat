@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   BUILTIN_FORMATTERS,
+  type DiscoveryCache,
   isBuiltinFormatterName,
 } from "../src/builtin-formatters.js";
 import {
@@ -65,6 +70,8 @@ describe("resolveChainSteps with built-ins", () => {
   });
 
   it("prefers a user-declared formatter over the built-in (shadow allowed)", () => {
+    // dummy hook to keep editor happy
+    void 0;
     const config: FormatterConfig = {
       formatters: {
         treefmt: { command: ["treefmt", "--ci"] },
@@ -77,5 +84,123 @@ describe("resolveChainSteps with built-ins", () => {
       expect(resolved[0].formatter.command).toEqual(["treefmt", "--ci"]);
       expect(resolved[0].formatter.builtin).toBeUndefined();
     }
+  });
+});
+
+describe("treefmt discovery", () => {
+  let tmp: string;
+  let repoRoot: string;
+  let nestedFile: string;
+  let outsideFile: string;
+
+  beforeAll(() => {
+    tmp = mkdtempSync(path.join(tmpdir(), "pi-autofmt-discovery-"));
+    repoRoot = path.join(tmp, "repo");
+    mkdirSync(path.join(repoRoot, "src", "a"), { recursive: true });
+    writeFileSync(path.join(repoRoot, "treefmt.toml"), "");
+    nestedFile = path.join(repoRoot, "src", "a", "x.ts");
+    writeFileSync(nestedFile, "");
+
+    const outsideRoot = path.join(tmp, "elsewhere");
+    mkdirSync(outsideRoot, { recursive: true });
+    outsideFile = path.join(outsideRoot, "y.ts");
+    writeFileSync(outsideFile, "");
+  });
+
+  afterAll(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("walks up to find treefmt.toml", async () => {
+    const root = await BUILTIN_FORMATTERS.treefmt.discoverRoot([nestedFile]);
+    expect(root).toBe(repoRoot);
+  });
+
+  it("finds .treefmt.toml as well", async () => {
+    const dotRoot = path.join(tmp, "dot-repo");
+    mkdirSync(path.join(dotRoot, "sub"), { recursive: true });
+    writeFileSync(path.join(dotRoot, ".treefmt.toml"), "");
+    const file = path.join(dotRoot, "sub", "a.ts");
+    writeFileSync(file, "");
+    const root = await BUILTIN_FORMATTERS.treefmt.discoverRoot([file]);
+    expect(root).toBe(dotRoot);
+  });
+
+  it("prefers treefmt.toml when both exist at the same root", async () => {
+    const both = path.join(tmp, "both");
+    mkdirSync(both, { recursive: true });
+    writeFileSync(path.join(both, "treefmt.toml"), "");
+    writeFileSync(path.join(both, ".treefmt.toml"), "");
+    const file = path.join(both, "a.ts");
+    writeFileSync(file, "");
+    const root = await BUILTIN_FORMATTERS.treefmt.discoverRoot([file]);
+    expect(root).toBe(both);
+  });
+
+  it("returns undefined when no config is found", async () => {
+    const root = await BUILTIN_FORMATTERS.treefmt.discoverRoot([outsideFile]);
+    expect(root).toBeUndefined();
+  });
+
+  it("reuses the discovery cache for already-walked directories", async () => {
+    const cache: DiscoveryCache = new Map();
+    const root1 = await BUILTIN_FORMATTERS.treefmt.discoverRoot([nestedFile], {
+      cache,
+    });
+    expect(root1).toBe(repoRoot);
+    expect(cache.size).toBeGreaterThan(0);
+    // Mutate one of the cached entries to a sentinel so we can prove the
+    // second call uses the cache rather than re-walking.
+    const dir = path.dirname(nestedFile);
+    cache.set(dir, "/sentinel");
+    const root2 = await BUILTIN_FORMATTERS.treefmt.discoverRoot([nestedFile], {
+      cache,
+    });
+    expect(root2).toBe("/sentinel");
+  });
+});
+
+describe("treefmt-nix discovery", () => {
+  let tmp: string;
+
+  beforeAll(() => {
+    tmp = mkdtempSync(path.join(tmpdir(), "pi-autofmt-nix-"));
+  });
+
+  afterAll(() => {
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("finds flake.nix + treefmt.nix at the root", async () => {
+    const root = path.join(tmp, "flake-a");
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    writeFileSync(path.join(root, "flake.nix"), "");
+    writeFileSync(path.join(root, "treefmt.nix"), "");
+    const file = path.join(root, "src", "a.ts");
+    writeFileSync(file, "");
+    const found = await BUILTIN_FORMATTERS["treefmt-nix"].discoverRoot([file]);
+    expect(found).toBe(root);
+  });
+
+  it("finds flake.nix + nix/treefmt.nix at the root", async () => {
+    const root = path.join(tmp, "flake-b");
+    mkdirSync(path.join(root, "nix"), { recursive: true });
+    mkdirSync(path.join(root, "src"), { recursive: true });
+    writeFileSync(path.join(root, "flake.nix"), "");
+    writeFileSync(path.join(root, "nix", "treefmt.nix"), "");
+    const file = path.join(root, "src", "a.ts");
+    writeFileSync(file, "");
+    const found = await BUILTIN_FORMATTERS["treefmt-nix"].discoverRoot([file]);
+    expect(found).toBe(root);
+  });
+
+  it("requires both flake.nix and a treefmt.nix to match", async () => {
+    const root = path.join(tmp, "flake-only");
+    mkdirSync(root, { recursive: true });
+    writeFileSync(path.join(root, "flake.nix"), "");
+    const file = path.join(root, "a.ts");
+    writeFileSync(file, "");
+    const found = await BUILTIN_FORMATTERS["treefmt-nix"].discoverRoot([file]);
+    expect(found).toBeUndefined();
   });
 });
