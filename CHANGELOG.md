@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.4.2](https://github.com/gotgenes/pi-autoformat/compare/v2.4.1...v2.4.2) (2026-05-02)
+
+
+### Documentation
+
+* drop stale v1 framing from configuration reference ([5e6d765](https://github.com/gotgenes/pi-autoformat/commit/5e6d765ac40a045fc6db18df2796a45f9cdc8c31))
+* slim README and link to configuration reference ([a5bbec0](https://github.com/gotgenes/pi-autoformat/commit/a5bbec041b0be93a54e27cd04759b17a1bdbf724))
+
 ## [2.4.1](https://github.com/gotgenes/pi-autoformat/compare/v2.4.0...v2.4.1) (2026-05-02)
 
 
