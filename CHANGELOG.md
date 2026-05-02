@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.3.0](https://github.com/gotgenes/pi-autoformat/compare/v2.2.0...v2.3.0) (2026-05-02)
+
+
+### Features
+
+* add formatter run output trimming helper ([4263a78](https://github.com/gotgenes/pi-autoformat/commit/4263a7822f969eb0a3633864c99b5573dcc2ea87))
+* add formatterOutput config object with safe defaults ([c0a88e2](https://github.com/gotgenes/pi-autoformat/commit/c0a88e23a8cccc3cba2e70d6b44fafe80ad4facb))
+* surface failed formatter output in reports ([768bf2a](https://github.com/gotgenes/pi-autoformat/commit/768bf2a3d0ac67f9ef4010de3347300be831ea22))
+* surface formatterOutput in the JSON schema ([15cbfef](https://github.com/gotgenes/pi-autoformat/commit/15cbfefcc23c1462a6e62ad094da48c22287270c))
+
+
+### Bug Fixes
+
+* preserve theme this binding when coloring the status line ([6a6ec16](https://github.com/gotgenes/pi-autoformat/commit/6a6ec16bbb52b4a14c12a7e86d36d691a3c41eb2))
+
+
+### Documentation
+
+* apply autoformat to plan 0016 ([04677ee](https://github.com/gotgenes/pi-autoformat/commit/04677eee19698e0448776157c3ddcc77e2489793))
+* document the formatterOutput failure reporting option ([6cb70c6](https://github.com/gotgenes/pi-autoformat/commit/6cb70c6d1b05914daf4aa46ae043149650ca1bfa))
+* plan optional detailed formatter output on failure ([#2](https://github.com/gotgenes/pi-autoformat/issues/2)) ([a2d466e](https://github.com/gotgenes/pi-autoformat/commit/a2d466ebab41bcfaa4ef25e04794e42fb30b031a))
+* **retro:** add retro notes for issue [#1](https://github.com/gotgenes/pi-autoformat/issues/1) ([031cde3](https://github.com/gotgenes/pi-autoformat/commit/031cde358312e93ee0fd1a75ed8a951539c15a65))
+
+
+### Miscellaneous Chores
+
+* update pi-autoformat config ([5759bf6](https://github.com/gotgenes/pi-autoformat/commit/5759bf6ff3c964bbaa9b183f7c1ae68940523c2a))
+
 ## [2.2.0](https://github.com/gotgenes/pi-autoformat/compare/v2.1.0...v2.2.0) (2026-05-02)
 
 
