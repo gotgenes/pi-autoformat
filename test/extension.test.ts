@@ -611,6 +611,65 @@ describe("createAutoformatExtension", () => {
       expect(message).toContain("    only stderr");
     });
 
+    it("truncates a multi-kilobyte stderr while preserving the tail", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const ctx = createContext({ ui: { notify } });
+
+      // 200 lines, ~50 bytes each → ~10 KB. Cap well below.
+      const longStderr = Array.from(
+        { length: 200 },
+        (_, i) =>
+          `line${String(i).padStart(3, "0")}: ${"diagnostic-".repeat(3)}`,
+      ).join("\n");
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue({
+          ...createLoadResult("prompt"),
+          config: createFormatterConfig({
+            formatMode: "prompt",
+            formatterOutput: {
+              onFailure: "stderr",
+              maxBytes: 1024,
+              maxLines: 100,
+            },
+          }),
+        }),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi.fn().mockResolvedValue({
+            groups: [
+              {
+                chain: ["prettier"],
+                files: ["/repo/a.ts"],
+                runs: [
+                  {
+                    formatterName: "prettier",
+                    command: ["prettier", "--write", "/repo/a.ts"],
+                    files: ["/repo/a.ts"],
+                    success: false,
+                    exitCode: 2,
+                    stderr: longStderr,
+                  },
+                ],
+              },
+            ],
+          }),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      const [message] = notify.mock.calls[0];
+      expect(message).toMatch(/\(truncated, \d+ earlier (bytes|lines)\)/);
+      // Tail must survive.
+      expect(message).toContain("line199");
+      // Head must not.
+      expect(message).not.toContain("line000");
+      expect(message).not.toContain("line050");
+    });
+
     it("never annotates successful runs even under onFailure: both", async () => {
       const pi = new TestPi();
       const notify = vi.fn();
