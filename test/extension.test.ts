@@ -1419,6 +1419,25 @@ describe("createAutoformatExtension", () => {
 
     expect(pi.sentMessages).toHaveLength(0);
   });
+
+  it("does not send a follow-up when notifyAgent is false", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(0);
+  });
 });
 
 describe("buildNotifyMessageContent", () => {
