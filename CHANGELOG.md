@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.3.1](https://github.com/gotgenes/pi-autoformat/compare/v2.3.0...v2.3.1) (2026-05-02)
+
+
+### Documentation
+
+* plan adopting pi-coding-agent types ([#22](https://github.com/gotgenes/pi-autoformat/issues/22)) ([d06f43c](https://github.com/gotgenes/pi-autoformat/commit/d06f43cb216fb10a8c4ce2252dd55ded65ce5114))
+* **retro:** add retro notes for issue [#2](https://github.com/gotgenes/pi-autoformat/issues/2) ([9e1ebd6](https://github.com/gotgenes/pi-autoformat/commit/9e1ebd680098d5588c382c6d37080defffb5b5b1))
+* **retro:** revert pi-mono pointer in favor of issue [#22](https://github.com/gotgenes/pi-autoformat/issues/22) ([3289595](https://github.com/gotgenes/pi-autoformat/commit/32895952b2a65b14c5c191dc80a2eae2196a77c6))
+
+
+### Miscellaneous Chores
+
+* add pi-coding-agent for runtime types ([2d93a5e](https://github.com/gotgenes/pi-autoformat/commit/2d93a5e3cd56dac630f978618ff6c1d1cd3dd031))
+
 ## [2.3.0](https://github.com/gotgenes/pi-autoformat/compare/v2.2.0...v2.3.0) (2026-05-02)
 
 
