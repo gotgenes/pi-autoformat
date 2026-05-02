@@ -714,7 +714,6 @@ export function createAutoformatExtension(
         sessionState.autoformatter.addTouchedPath(touched);
       }
     }
-
   });
 
   pi.on("agent_end", async (_event, ctx) => {
@@ -734,7 +733,7 @@ export function createAutoformatExtension(
       if (content) {
         sessionState.followUpPending = true;
         pi.sendMessage(
-          { customType: "autoformat-notify", content },
+          { customType: "autoformat-notify", content, display: true },
           { triggerTurn: true },
         );
       }
@@ -746,6 +745,10 @@ export function createAutoformatExtension(
     if (!sessionState) {
       return;
     }
+
+    // Final safety-net flush for any touched files not yet formatted
+    // (e.g. files added via EventBus without an agent loop).
+    await queueFlush(ctx);
 
     setAutoformatStatus(ctx, undefined);
     sessionState.unsubscribeEventBus?.();

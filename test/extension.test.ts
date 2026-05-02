@@ -108,10 +108,7 @@ class TestPi {
     options?: Record<string, unknown>;
   }> = [];
 
-  readonly sendMessage = ((
-    message: unknown,
-    options?: unknown,
-  ): void => {
+  readonly sendMessage = ((message: unknown, options?: unknown): void => {
     this.sentMessages.push({
       message: message as Record<string, unknown>,
       options: options as Record<string, unknown> | undefined,

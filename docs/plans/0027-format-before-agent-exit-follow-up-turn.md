@@ -46,7 +46,7 @@ Since nobody outside the project uses this extension yet, we can make a clean br
 ### Relevant modules
 
 | Module | Role |
-|---|---|
+| --- | --- |
 | `src/extension.ts` | Extension entrypoint. Registers lifecycle handlers (`session_start`, `tool_result`, `agent_end`, `session_shutdown`). Owns `queueFlush()` and result reporting. Has `formatMode` branching in `tool_result` and `agent_end` handlers. |
 | `src/formatter-config.ts` | Defines `FormatMode` type, `AutoformatConfig`, `UserFormatterConfig`, defaults, `createFormatterConfig()`. |
 | `src/config-loader.ts` | Loads/merges global+project config, validates `formatMode` values, produces `LoadConfigResult`. |
