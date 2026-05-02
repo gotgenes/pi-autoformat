@@ -57,6 +57,52 @@ describe("createFormatterConfig", () => {
     expect(config.formatters.prettier?.disabled).toBe(true);
   });
 
+  it("defaults formatterOutput to disabled with safe truncation caps", () => {
+    const config = createFormatterConfig();
+
+    expect(config.formatterOutput).toEqual({
+      onFailure: "none",
+      maxBytes: 4096,
+      maxLines: 40,
+    });
+  });
+
+  it("exposes formatterOutput defaults on DEFAULT_FORMATTER_CONFIG", () => {
+    expect(DEFAULT_FORMATTER_CONFIG.formatterOutput).toEqual({
+      onFailure: "none",
+      maxBytes: 4096,
+      maxLines: 40,
+    });
+  });
+
+  it("merges a partial formatterOutput user object field-by-field", () => {
+    const userConfig: UserFormatterConfig = {
+      formatterOutput: { onFailure: "stderr" },
+    };
+
+    const config = createFormatterConfig(userConfig);
+
+    expect(config.formatterOutput).toEqual({
+      onFailure: "stderr",
+      maxBytes: 4096,
+      maxLines: 40,
+    });
+  });
+
+  it("allows overriding individual formatterOutput caps", () => {
+    const userConfig: UserFormatterConfig = {
+      formatterOutput: { onFailure: "both", maxBytes: 256, maxLines: 5 },
+    };
+
+    const config = createFormatterConfig(userConfig);
+
+    expect(config.formatterOutput).toEqual({
+      onFailure: "both",
+      maxBytes: 256,
+      maxLines: 5,
+    });
+  });
+
   it("merges chain configuration while preserving user order", () => {
     const userConfig: UserFormatterConfig = {
       chains: {
