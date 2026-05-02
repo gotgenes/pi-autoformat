@@ -101,7 +101,10 @@ function trimStream(
   return { lines };
 }
 
-function renderBlock(label: "stdout" | "stderr", stream: TrimmedStream): string {
+function renderBlock(
+  label: "stdout" | "stderr",
+  stream: TrimmedStream,
+): string {
   const lines = [`${HEADER_INDENT}${label}:`];
   if (stream.marker) {
     lines.push(`${BODY_INDENT}${stream.marker}`);

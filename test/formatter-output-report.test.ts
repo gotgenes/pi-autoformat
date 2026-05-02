@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
-
-import type { BatchRun } from "../src/formatter-executor.js";
 import type { FormatterOutputReportingConfig } from "../src/formatter-config.js";
+import type { BatchRun } from "../src/formatter-executor.js";
 import { formatRunOutputBlock } from "../src/formatter-output-report.js";
 
 const ENABLED_STDERR: FormatterOutputReportingConfig = {
@@ -112,10 +111,11 @@ describe("formatRunOutputBlock", () => {
     const stderr = Array.from({ length: 50 }, (_, i) => `line${i + 1}`).join(
       "\n",
     );
-    const block = formatRunOutputBlock(
-      failedRun({ stderr }),
-      { onFailure: "stderr", maxBytes: 65536, maxLines: 5 },
-    );
+    const block = formatRunOutputBlock(failedRun({ stderr }), {
+      onFailure: "stderr",
+      maxBytes: 65536,
+      maxLines: 5,
+    });
     expect(block).toBeDefined();
     const lines = (block ?? "").split("\n");
     expect(lines[0]).toBe("  stderr:");
@@ -135,16 +135,15 @@ describe("formatRunOutputBlock", () => {
       { length: 10 },
       (_, i) => `${String(i).padStart(2, "0")}-${"x".repeat(96)}`,
     ).join("\n");
-    const block = formatRunOutputBlock(
-      failedRun({ stderr }),
-      { onFailure: "stderr", maxBytes: 250, maxLines: 100 },
-    );
+    const block = formatRunOutputBlock(failedRun({ stderr }), {
+      onFailure: "stderr",
+      maxBytes: 250,
+      maxLines: 100,
+    });
     expect(block).toBeDefined();
     const lines = (block ?? "").split("\n");
     expect(lines[0]).toBe("  stderr:");
-    expect(lines[1]).toMatch(
-      /^ {4}\.\.\. \(truncated, \d+ earlier bytes\)$/,
-    );
+    expect(lines[1]).toMatch(/^ {4}\.\.\. \(truncated, \d+ earlier bytes\)$/);
     // Only the tail lines survive; the first line ("00-…") must be gone.
     expect(block).not.toContain("00-x");
     expect(block).toContain("09-x");
@@ -155,10 +154,11 @@ describe("formatRunOutputBlock", () => {
     const head = "x".repeat(100);
     const tail = "🌟🌟🌟"; // 12 bytes
     const stderr = `${head}\n${tail}`;
-    const block = formatRunOutputBlock(
-      failedRun({ stderr }),
-      { onFailure: "stderr", maxBytes: 14, maxLines: 100 },
-    );
+    const block = formatRunOutputBlock(failedRun({ stderr }), {
+      onFailure: "stderr",
+      maxBytes: 14,
+      maxLines: 100,
+    });
     expect(block).toBeDefined();
     // Whatever survived must be valid UTF-8 (round-tripping through Buffer
     // preserves bytes; a bisected sequence would render as U+FFFD).
@@ -168,10 +168,11 @@ describe("formatRunOutputBlock", () => {
 
   it("leaves output unchanged when both caps are well above the content size", () => {
     const stderr = "short and tidy";
-    const block = formatRunOutputBlock(
-      failedRun({ stderr }),
-      { onFailure: "stderr", maxBytes: 10_000, maxLines: 100 },
-    );
+    const block = formatRunOutputBlock(failedRun({ stderr }), {
+      onFailure: "stderr",
+      maxBytes: 10_000,
+      maxLines: 100,
+    });
     expect(block).toBe(["  stderr:", "    short and tidy"].join("\n"));
   });
 });

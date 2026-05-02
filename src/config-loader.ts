@@ -891,11 +891,7 @@ function validateFormatterOutput(
       continue;
     }
     if (key === "maxBytes" || key === "maxLines") {
-      if (
-        typeof entry === "number" &&
-        Number.isInteger(entry) &&
-        entry >= 0
-      ) {
+      if (typeof entry === "number" && Number.isInteger(entry) && entry >= 0) {
         result[key] = entry;
         continue;
       }

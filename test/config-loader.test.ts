@@ -651,7 +651,10 @@ describe("validateUserFormatterConfig: formatterOutput", () => {
       formatterOutput: { maxBytes: -1, maxLines: 1.5 },
     });
     const paths = result.issues.map((i) => i.path).sort();
-    expect(paths).toEqual(["formatterOutput.maxBytes", "formatterOutput.maxLines"]);
+    expect(paths).toEqual([
+      "formatterOutput.maxBytes",
+      "formatterOutput.maxLines",
+    ]);
   });
 
   it("rejects non-object values", () => {
@@ -665,9 +668,7 @@ describe("validateUserFormatterConfig: formatterOutput", () => {
     const result = validateUserFormatterConfig({
       formatterOutput: { onFailure: "none", weird: 1 },
     });
-    expect(result.issues.map((i) => i.path)).toEqual([
-      "formatterOutput.weird",
-    ]);
+    expect(result.issues.map((i) => i.path)).toEqual(["formatterOutput.weird"]);
   });
 });
 
