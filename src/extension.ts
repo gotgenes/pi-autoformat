@@ -14,6 +14,7 @@ import {
 import { resolveFormatScope } from "./format-scope.js";
 import type { AutoformatConfig } from "./formatter-config.js";
 import type { CommandRunner, CommandRunResult } from "./formatter-executor.js";
+import { formatRunOutputBlock } from "./formatter-output-report.js";
 import {
   PromptAutoformatter,
   type PromptAutoformatterResult,
@@ -316,7 +317,10 @@ function formatterLabel(
   return `${name} (fallback after ${fallbackContext.skipped.join(", ")} unavailable)`;
 }
 
-function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
+function summarizeFailures(
+  result: PromptAutoformatterResult,
+  config?: AutoformatConfig,
+): FailureSummary {
   const lines: string[] = [];
   let failedBatchCount = 0;
 
@@ -329,6 +333,12 @@ function summarizeFailures(result: PromptAutoformatterResult): FailureSummary {
       lines.push(
         `${formatterLabel(run.formatterName, run.fallbackContext)} (exit ${run.exitCode}): ${run.files.join(", ")}`,
       );
+      if (config) {
+        const outputBlock = formatRunOutputBlock(run, config.formatterOutput);
+        if (outputBlock) {
+          lines.push(outputBlock);
+        }
+      }
     }
   }
 
@@ -376,8 +386,11 @@ type FlushSummary = {
   fallbackUsages: string[];
 };
 
-function summarizeFlush(result: PromptAutoformatterResult): FlushSummary {
-  const failureSummary = summarizeFailures(result);
+function summarizeFlush(
+  result: PromptAutoformatterResult,
+  config?: AutoformatConfig,
+): FlushSummary {
+  const failureSummary = summarizeFailures(result, config);
   const fallbackUsages = summarizeFallbackUsages(result);
   const fileCount = collectAllFiles(result).length;
 
@@ -486,7 +499,7 @@ function defaultReportFlushResult(
     return;
   }
 
-  const summary = summarizeFlush(result);
+  const summary = summarizeFlush(result, options.config);
 
   if (summary.failureBatchCount > 0) {
     const message = buildLegacyFailureMessage(summary);
