@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.0.0](https://github.com/gotgenes/pi-autoformat/compare/v2.4.2...v3.0.0) (2026-05-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Removed formatMode branching from the extension runtime. The tool_result handler no longer conditionally flushes. The agent_end handler always flushes. The session_shutdown handler no longer conditionally flushes. Tests for tool and session mode behaviors have been removed.
+* The formatMode property has been removed from the JSON schema. Existing configs with formatMode will fail schema validation but the config loader still tolerates the key with a deprecation notice.
+* The formatMode config field has been removed. The runtime always uses prompt-end formatting (the previous "prompt" behavior). The config loader tolerates the legacy key, emits a config issue, and discards the value.
+
+### Features
+
+* add buildNotifyMessageContent helper ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([74d8451](https://github.com/gotgenes/pi-autoformat/commit/74d845101a4ca9ea76b68c2b7db98c2786583737))
+* add notifyAgent config field ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([f660c84](https://github.com/gotgenes/pi-autoformat/commit/f660c841ac54701c18aacae209e0a37b901a5cda))
+* always use prompt-end formatting ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([991d0c8](https://github.com/gotgenes/pi-autoformat/commit/991d0c8de66575d96fdf7e5eca3a5b24e812e2dd))
+* emit config issue for legacy formatMode key ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([98f51e9](https://github.com/gotgenes/pi-autoformat/commit/98f51e9d09c3551013212d3611f0741a66bf400d))
+* include formatter failures in follow-up message ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([fe41c38](https://github.com/gotgenes/pi-autoformat/commit/fe41c38e4ea18c508b23564558cc1ef1c542368b))
+* remove formatMode config field ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([d5b4484](https://github.com/gotgenes/pi-autoformat/commit/d5b4484c59d64f014440f8194795e129f8354f48))
+* remove formatMode from config schema ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([bb970f1](https://github.com/gotgenes/pi-autoformat/commit/bb970f1e7c106c9d4eb5ba3a5b8da3be6488d455))
+* send follow-up turn after formatting ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([ff4b6bd](https://github.com/gotgenes/pi-autoformat/commit/ff4b6bd37d23b5a57ec723fb135cb15e306bf469))
+
+
+### Bug Fixes
+
+* safety-net flush on session_shutdown and lint fixes ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([3f834f0](https://github.com/gotgenes/pi-autoformat/commit/3f834f0bd676e1da66f60583e3f05130d5a5039f))
+
+
+### Documentation
+
+* backport prompt template improvements from pi-permission-system ([59e35f3](https://github.com/gotgenes/pi-autoformat/commit/59e35f3d622dca89093f18eb330857b267cadba6))
+* document notifyAgent and remove formatMode docs ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([d4b8f24](https://github.com/gotgenes/pi-autoformat/commit/d4b8f24c7c4f87f076878afc93d0b4b61117218c))
+* plan format-before-exit follow-up turn ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([85eb70d](https://github.com/gotgenes/pi-autoformat/commit/85eb70ddd6d769437b1b81667a6cb72cb4a5be62))
+* plan format-before-exit follow-up turn ([#27](https://github.com/gotgenes/pi-autoformat/issues/27)) ([626a8fd](https://github.com/gotgenes/pi-autoformat/commit/626a8fd563ce2454fcea28c49d4a880600ec03ab))
+
 ## [2.4.2](https://github.com/gotgenes/pi-autoformat/compare/v2.4.1...v2.4.2) (2026-05-02)
 
 
