@@ -10,6 +10,8 @@ import {
   DEFAULT_FORMATTER_CONFIG,
   type EventBusMutationChannelConfig,
   type FormatMode,
+  type FormatterOutputOnFailure,
+  type FormatterOutputReportingConfig,
   type UserFormatterConfig,
 } from "./formatter-config.js";
 import type {
@@ -863,6 +865,62 @@ function validateCustomMutationTools(
   return collected;
 }
 
+function validateFormatterOutput(
+  value: unknown,
+  issues: ConfigValidationIssue[],
+  sourcePath?: string,
+): Partial<FormatterOutputReportingConfig> | undefined {
+  if (!isRecord(value)) {
+    pushIssue(issues, "formatterOutput", "Expected an object.", sourcePath);
+    return undefined;
+  }
+
+  const result: Partial<FormatterOutputReportingConfig> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (key === "onFailure") {
+      if (entry === "none" || entry === "stderr" || entry === "both") {
+        result.onFailure = entry as FormatterOutputOnFailure;
+        continue;
+      }
+      pushIssue(
+        issues,
+        "formatterOutput.onFailure",
+        'Expected one of "none", "stderr", or "both".',
+        sourcePath,
+      );
+      continue;
+    }
+    if (key === "maxBytes" || key === "maxLines") {
+      if (
+        typeof entry === "number" &&
+        Number.isInteger(entry) &&
+        entry >= 0
+      ) {
+        result[key] = entry;
+        continue;
+      }
+      pushIssue(
+        issues,
+        `formatterOutput.${key}`,
+        "Expected a non-negative integer.",
+        sourcePath,
+      );
+      continue;
+    }
+    pushIssue(
+      issues,
+      `formatterOutput.${key}`,
+      "Unknown property.",
+      sourcePath,
+    );
+  }
+
+  if (Object.keys(result).length === 0) {
+    return undefined;
+  }
+  return result;
+}
+
 function validateEventBusMutationChannel(
   value: unknown,
   issues: ConfigValidationIssue[],
@@ -1012,6 +1070,18 @@ function validateConfigObject(
       continue;
     }
 
+    if (key === "formatterOutput") {
+      const formatterOutput = validateFormatterOutput(
+        entry,
+        issues,
+        sourcePath,
+      );
+      if (formatterOutput !== undefined) {
+        config.formatterOutput = formatterOutput;
+      }
+      continue;
+    }
+
     if (key === "eventBusMutationChannel") {
       const channel = validateEventBusMutationChannel(
         entry,
@@ -1081,6 +1151,10 @@ function mergeUserConfigs(
       base.eventBusMutationChannel,
       overrides.eventBusMutationChannel,
     ),
+    formatterOutput: mergeFormatterOutput(
+      base.formatterOutput,
+      overrides.formatterOutput,
+    ),
     formatters: {
       ...base.formatters,
       ...overrides.formatters,
@@ -1090,6 +1164,16 @@ function mergeUserConfigs(
       ...overrides.chains,
     },
   };
+}
+
+function mergeFormatterOutput(
+  base: Partial<FormatterOutputReportingConfig> | undefined,
+  overrides: Partial<FormatterOutputReportingConfig> | undefined,
+): Partial<FormatterOutputReportingConfig> | undefined {
+  if (!base && !overrides) {
+    return undefined;
+  }
+  return { ...(base ?? {}), ...(overrides ?? {}) };
 }
 
 function mergeEventBusMutationChannel(
