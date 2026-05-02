@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { LoadConfigResult } from "../src/config-loader.js";
 import {
+  buildNotifyMessageContent,
   createAutoformatExtension,
   createDefaultAutoformatter,
 } from "../src/extension.js";
@@ -1299,5 +1300,140 @@ describe("createAutoformatExtension", () => {
     expect(result.groups.flatMap((g) => g.files)).toEqual([
       "/repo/src/generated.ts",
     ]);
+  });
+});
+
+describe("buildNotifyMessageContent", () => {
+  it("returns undefined for empty groups", () => {
+    expect(buildNotifyMessageContent({ groups: [] })).toBeUndefined();
+  });
+
+  it("lists a single formatted file", () => {
+    const result = buildNotifyMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/src/foo.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/src/foo.ts"],
+              success: true,
+              exitCode: 0,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toContain("1 file(s)");
+    expect(result).toContain("/repo/src/foo.ts");
+    expect(result).not.toContain("Failures");
+  });
+
+  it("lists multiple formatted files", () => {
+    const result = buildNotifyMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: [],
+              files: ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"],
+              success: true,
+              exitCode: 0,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toContain("3 file(s)");
+    expect(result).toContain("/repo/a.ts");
+    expect(result).toContain("/repo/c.ts");
+  });
+
+  it("truncates file lists beyond 10 files", () => {
+    const files = Array.from({ length: 12 }, (_, i) => `/repo/f${i}.ts`);
+    const result = buildNotifyMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files,
+          runs: [
+            {
+              formatterName: "prettier",
+              command: [],
+              files,
+              success: true,
+              exitCode: 0,
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toContain("12 file(s)");
+    expect(result).toContain("/repo/f0.ts");
+    expect(result).toContain("/repo/f9.ts");
+    expect(result).not.toContain("/repo/f10.ts");
+    expect(result).toContain("and 2 more");
+  });
+
+  it("includes failure details with stderr", () => {
+    const result = buildNotifyMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/ok.ts", "/repo/bad.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/ok.ts"],
+              success: true,
+              exitCode: 0,
+            },
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/bad.ts"],
+              success: false,
+              exitCode: 2,
+              stderr: "SyntaxError: Unexpected token at line 42",
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).toContain("Formatted 1 file(s)");
+    expect(result).toContain("Failures:");
+    expect(result).toContain("prettier (exit 2)");
+    expect(result).toContain("/repo/bad.ts");
+    expect(result).toContain("SyntaxError: Unexpected token at line 42");
+  });
+
+  it("omits success line when all runs failed", () => {
+    const result = buildNotifyMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/bad.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: [],
+              files: ["/repo/bad.ts"],
+              success: false,
+              exitCode: 1,
+              stderr: "error",
+            },
+          ],
+        },
+      ],
+    });
+    expect(result).not.toContain("Formatted");
+    expect(result).toContain("Failures:");
+    expect(result).toContain("prettier (exit 1)");
   });
 });
