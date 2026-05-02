@@ -1,10 +1,14 @@
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  Theme,
+} from "@mariozechner/pi-coding-agent";
 import { describe, expect, it, vi } from "vitest";
 
 import type { LoadConfigResult } from "../src/config-loader.js";
 import {
   createAutoformatExtension,
   createDefaultAutoformatter,
-  type ExtensionApiLike,
 } from "../src/extension.js";
 import { createFormatterConfig } from "../src/formatter-config.js";
 import type { PromptAutoformatterResult } from "../src/prompt-autoformatter.js";
@@ -18,13 +22,48 @@ type EventName =
   | "agent_end"
   | "session_shutdown";
 
+/**
+ * Class-based stub that mirrors Pi's real `Theme.fg` `this`-binding
+ * requirement. Plain object literals like `{ fg: (n, t) => t }` would
+ * not surface the regression fixed in 6a6ec16, so every test ctx must
+ * use this stub (or a real Theme instance).
+ */
+class StubTheme {
+  private readonly fgColors = new Map<string, string>([
+    ["success", ""],
+    ["warning", ""],
+    ["error", ""],
+    ["dim", ""],
+    ["accent", ""],
+  ]);
+
+  fg(color: string, text: string): string {
+    if (!this.fgColors.has(color)) {
+      throw new Error(`Unknown theme color: ${color}`);
+    }
+    return text;
+  }
+}
+
+/** Build a `Theme`-shaped value backed by `StubTheme`. */
+function makeStubTheme(): Theme {
+  return new StubTheme() as unknown as Theme;
+}
+
+/**
+ * Narrowed `ExtensionContext` view used by the autoformat extension. The
+ * real `ExtensionContext` requires sessionManager/modelRegistry/etc. that
+ * the autoformatter never touches, so tests fabricate only the surface
+ * exercised here. `ui.theme` is anchored to the real `Theme` type so
+ * plain-arrow stubs are rejected at compile time.
+ */
 type TestContext = {
   cwd: string;
   hasUI: boolean;
   ui: {
     notify(message: string, type?: "info" | "warning" | "error"): void;
     setStatus?: (key: string, text: string | undefined) => void;
-    theme?: { fg: (name: string, text: string) => string };
+    theme?: Theme;
   };
 };
 
@@ -35,16 +74,20 @@ class TestPi {
     Array<(data: unknown) => void>
   >();
 
-  readonly on: ExtensionApiLike["on"] = (
-    eventName: EventName,
-    handler: Handler,
-  ): void => {
+  // Cast through unknown: TestPi only models the events we exercise, not
+  // ExtensionAPI's full overload set. The boundary cast lives here once
+  // and the autoformat-side typing remains anchored to ExtensionAPI.
+  readonly on = ((eventName: EventName, handler: Handler): void => {
     const existing = this.handlers.get(eventName) ?? [];
     existing.push(handler);
     this.handlers.set(eventName, existing);
-  };
+  }) as unknown as ExtensionAPI["on"];
 
-  readonly events: NonNullable<ExtensionApiLike["events"]> = {
+  readonly events: ExtensionAPI["events"] = {
+    emit: (_channel: string, _data: unknown): void => {
+      // Tests use `emitBus` for clarity; the EventBus.emit is a no-op in
+      // tests because no real bus producers run.
+    },
     on: (channel, handler) => {
       const existing = this.busHandlers.get(channel) ?? [];
       existing.push(handler);
@@ -58,6 +101,11 @@ class TestPi {
       };
     },
   };
+
+  /** Cast helper: TestPi satisfies the slice of ExtensionAPI under test. */
+  asExtensionAPI(): ExtensionAPI {
+    return this as unknown as ExtensionAPI;
+  }
 
   emitBus(channel: string, data: unknown): void {
     for (const handler of this.busHandlers.get(channel) ?? []) {
@@ -75,7 +123,7 @@ class TestPi {
     ctx: TestContext,
   ): Promise<void> {
     for (const handler of this.handlers.get(eventName) ?? []) {
-      await handler(event as never, ctx);
+      await handler(event as never, ctx as unknown as ExtensionContext);
     }
   }
 }
@@ -98,7 +146,7 @@ function createContext(overrides?: Partial<TestContext>): TestContext {
     ui: {
       notify: vi.fn(),
       setStatus: vi.fn(),
-      theme: { fg: (_name: string, text: string) => text },
+      theme: makeStubTheme(),
     },
     ...overrides,
   };
@@ -130,34 +178,15 @@ describe("createAutoformatExtension", () => {
     // `this.fgColors`. If our extension destructures the method off the
     // theme object and calls it standalone, `this` is undefined and the
     // call throws "Cannot read properties of undefined (reading
-    // 'fgColors')". Reproduce that shape with a class-based stub.
-    class StubTheme {
-      private readonly fgColors = new Map<string, string>([
-        ["success", ""],
-        ["warning", ""],
-        ["error", ""],
-        ["dim", ""],
-        ["accent", ""],
-      ]);
-
-      fg(color: string, text: string): string {
-        // Throws "Cannot read properties of undefined (reading 'fgColors')"
-        // when called without `this`.
-        if (!this.fgColors.has(color)) {
-          throw new Error(`Unknown theme color: ${color}`);
-        }
-        return text;
-      }
-    }
-
+    // 'fgColors')". The module-level `StubTheme` reproduces that shape.
     const pi = new TestPi();
     const notify = vi.fn();
     const setStatus = vi.fn();
     const ctx = createContext({
-      ui: { notify, setStatus, theme: new StubTheme() },
+      ui: { notify, setStatus, theme: makeStubTheme() },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -187,11 +216,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -215,11 +244,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -264,11 +293,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -328,11 +357,18 @@ describe("createAutoformatExtension", () => {
     const notify = vi.fn();
     const setStatus = vi.fn();
     const fg = vi.fn((_name: string, text: string) => text);
+    class SpyTheme {
+      fg = fg;
+    }
     const ctx = createContext({
-      ui: { notify, setStatus, theme: { fg } },
+      ui: {
+        notify,
+        setStatus,
+        theme: new SpyTheme() as unknown as Theme,
+      },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -382,11 +418,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -440,11 +476,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -486,7 +522,7 @@ describe("createAutoformatExtension", () => {
     const notify = vi.fn();
     const ctx = createContext({ ui: { notify } });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -548,7 +584,7 @@ describe("createAutoformatExtension", () => {
       const notify = vi.fn();
       const ctx = createContext({ ui: { notify } });
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
         createAutoformatter: vi.fn().mockReturnValue({
           recordToolResult: vi.fn(),
@@ -572,7 +608,7 @@ describe("createAutoformatExtension", () => {
       const notify = vi.fn();
       const ctx = createContext({ ui: { notify } });
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
           ...createLoadResult("prompt"),
           config: createFormatterConfig({
@@ -607,7 +643,7 @@ describe("createAutoformatExtension", () => {
       const notify = vi.fn();
       const ctx = createContext({ ui: { notify } });
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
           ...createLoadResult("prompt"),
           config: createFormatterConfig({
@@ -640,7 +676,7 @@ describe("createAutoformatExtension", () => {
       const notify = vi.fn();
       const ctx = createContext({ ui: { notify } });
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
           ...createLoadResult("prompt"),
           config: createFormatterConfig({
@@ -677,7 +713,7 @@ describe("createAutoformatExtension", () => {
           `line${String(i).padStart(3, "0")}: ${"diagnostic-".repeat(3)}`,
       ).join("\n");
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
           ...createLoadResult("prompt"),
           config: createFormatterConfig({
@@ -732,11 +768,11 @@ describe("createAutoformatExtension", () => {
         ui: {
           notify,
           setStatus,
-          theme: { fg: (_name: string, text: string) => text },
+          theme: makeStubTheme(),
         },
       });
 
-      createAutoformatExtension(pi, {
+      createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
           ...createLoadResult("prompt"),
           config: createFormatterConfig({
@@ -791,11 +827,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         config: createFormatterConfig({
@@ -825,11 +861,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify,
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         config: createFormatterConfig({
@@ -882,7 +918,7 @@ describe("createAutoformatExtension", () => {
       ui: { notify: vi.fn(), setStatus },
     };
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -925,7 +961,7 @@ describe("createAutoformatExtension", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const ctx = createContext({ hasUI: false });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -978,7 +1014,7 @@ describe("createAutoformatExtension", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const ctx = createContext({ hasUI: false });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         issues: [
@@ -1011,11 +1047,11 @@ describe("createAutoformatExtension", () => {
       ui: {
         notify: vi.fn(),
         setStatus,
-        theme: { fg: (_name: string, text: string) => text },
+        theme: makeStubTheme(),
       },
     });
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
@@ -1040,7 +1076,7 @@ describe("createAutoformatExtension", () => {
     };
     const reportFlushResult = vi.fn();
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult,
@@ -1078,7 +1114,7 @@ describe("createAutoformatExtension", () => {
       flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
     };
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("tool")),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
@@ -1106,7 +1142,7 @@ describe("createAutoformatExtension", () => {
       flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
     };
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("session")),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
@@ -1137,7 +1173,7 @@ describe("createAutoformatExtension", () => {
       addTouchedPath: vi.fn(),
     };
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
@@ -1166,7 +1202,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext();
     const reportConfigIssues = vi.fn();
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         issues: [
@@ -1208,7 +1244,7 @@ describe("createAutoformatExtension", () => {
       addTouchedPath,
     };
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
@@ -1237,7 +1273,7 @@ describe("createAutoformatExtension", () => {
     const pi = new TestPi();
     const ctx = createContext();
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         config: createFormatterConfig({
@@ -1262,7 +1298,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext();
     const addTouchedPath = vi.fn();
 
-    createAutoformatExtension(pi, {
+    createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
         ...createLoadResult("prompt"),
         config: createFormatterConfig({

@@ -49,20 +49,10 @@ type NotificationType = "info" | "warning" | "error";
  * so test stubs do not have to fabricate the unused fields, while top-level
  * `pi.on(...)` handlers still receive the real `ExtensionContext` from Pi.
  */
-type AutoformatExtensionContext = Pick<ExtensionContext, "cwd" | "hasUI" | "ui">;
-
-/**
- * Pi's `ExtensionAPI` does not currently expose the optional event-bus
- * channel that we use for `eventBusMutationChannel`. We widen the imported
- * type at the single call site (`subscribeToEventBus`) instead of redeclaring
- * the whole API. Delete this alias and use `ExtensionAPI` directly once Pi
- * adds `events` to `ExtensionAPI` proper.
- */
-type ExtensionAPIWithEvents = ExtensionAPI & {
-  events?: {
-    on(channel: string, handler: (data: unknown) => void): () => void;
-  };
-};
+type AutoformatExtensionContext = Pick<
+  ExtensionContext,
+  "cwd" | "hasUI" | "ui"
+>;
 
 /**
  * Re-export of Pi's real `ExtensionAPI` under the legacy `ExtensionApiLike`
@@ -240,7 +230,7 @@ function extractBashCommand(payload: unknown): string | undefined {
 }
 
 function subscribeToEventBus(
-  pi: ExtensionAPIWithEvents,
+  pi: ExtensionAPI,
   config: AutoformatConfig,
   autoformatter: PromptAutoformatterLike,
 ): (() => void) | undefined {
@@ -593,7 +583,7 @@ export function createAutoformatExtension(
         : undefined;
     const autoformatter = createAutoformatter(cwd, loadResult.config);
     const unsubscribeEventBus = subscribeToEventBus(
-      pi as ExtensionAPIWithEvents,
+      pi,
       loadResult.config,
       autoformatter,
     );

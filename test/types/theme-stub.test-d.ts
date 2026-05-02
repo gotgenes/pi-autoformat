@@ -12,9 +12,8 @@
  * `tsc --noEmit` to assert the type relationship.
  */
 
-import { describe, it } from "vitest";
-
 import type { Theme } from "@mariozechner/pi-coding-agent";
+import { describe, it } from "vitest";
 
 describe("Theme stub-shape expectations", () => {
   it("rejects plain-arrow-function `fg` stubs as assignable to Theme", () => {
