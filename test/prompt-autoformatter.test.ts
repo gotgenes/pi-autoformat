@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { BuiltinFormatter } from "../src/builtin-formatters.js";
 import type { CommandRunner } from "../src/formatter-executor.js";
 import type { FormatterConfig } from "../src/formatter-registry.js";
 import { PromptAutoformatter } from "../src/prompt-autoformatter.js";
@@ -166,5 +167,142 @@ describe("PromptAutoformatter", () => {
     }, {});
     expect(counts.biome ?? 0).toBeLessThanOrEqual(1);
     expect(counts.prettier ?? 0).toBeLessThanOrEqual(1);
+  });
+
+  describe("with a wildcard chain", () => {
+    function fakeTreefmt(
+      unhandledPredicate: (file: string) => boolean,
+    ): BuiltinFormatter {
+      return {
+        name: "treefmt",
+        async discoverRoot() {
+          return "/repo";
+        },
+        buildCommand(root, files) {
+          return {
+            command: ["treefmt", "--", ...files],
+            cwd: root,
+          };
+        },
+        partitionUnhandled(_run, files) {
+          const unhandled = files.filter(unhandledPredicate);
+          const handled = files.filter((f) => !unhandledPredicate(f));
+          return { handled, unhandled, treatAsSkip: false };
+        },
+      };
+    }
+
+    it("runs the wildcard chain first across all touched files and skips per-extension chains for handled files", async () => {
+      const calls: Array<{ command: string; args: string[] }> = [];
+      const runner: CommandRunner = async (command, args) => {
+        calls.push({ command, args });
+        return { exitCode: 0 };
+      };
+      const wildcardConfig: FormatterConfig = {
+        formatters: {
+          prettier: { command: ["prettier", "--write"] },
+          // Built-in shadow with a controlled fake.
+          treefmt: { command: ["treefmt", "--ci"] },
+        },
+        chains: {
+          "*": ["_treefmt_fake"],
+          ".ts": ["prettier"],
+        },
+      };
+      // Inject our fake by registering a fake formatter whose name we
+      // route through the builtin path manually. Simpler: bypass and set
+      // up a config where the wildcard chain references a real built-in.
+      // Use the actual built-in name and provide a chain config.
+      const builtinConfig: FormatterConfig = {
+        formatters: {
+          prettier: { command: ["prettier", "--write"] },
+        },
+        chains: {
+          "*": ["treefmt"],
+          ".ts": ["prettier"],
+          ".bin": ["prettier"],
+        },
+      };
+      // Patch the global treefmt built-in's hooks for this test.
+      const { BUILTIN_FORMATTERS } = await import(
+        "../src/builtin-formatters.js"
+      );
+      const original = { ...BUILTIN_FORMATTERS.treefmt };
+      const fake = fakeTreefmt((f) => f.endsWith(".bin"));
+      BUILTIN_FORMATTERS.treefmt.discoverRoot = fake.discoverRoot;
+      BUILTIN_FORMATTERS.treefmt.buildCommand = fake.buildCommand;
+      BUILTIN_FORMATTERS.treefmt.partitionUnhandled = fake.partitionUnhandled;
+      try {
+        const formatter = new PromptAutoformatter(
+          "/repo",
+          builtinConfig,
+          runner,
+        );
+        formatter.addTouchedPath("/repo/a.ts");
+        formatter.addTouchedPath("/repo/b.bin");
+
+        const result = await formatter.flushPrompt();
+
+        // treefmt invoked once with both files; prettier runs only on the
+        // unhandled .bin file (per-ext chain backstops the wildcard skip).
+        expect(calls[0]).toEqual({
+          command: "treefmt",
+          args: ["--", "/repo/a.ts", "/repo/b.bin"],
+        });
+        const prettierCalls = calls.filter((c) => c.command === "prettier");
+        expect(prettierCalls).toHaveLength(1);
+        expect(prettierCalls[0]?.args).toEqual([
+          "--write",
+          "/repo/b.bin",
+        ]);
+        // Sanity: groups recorded.
+        expect(result.groups[0].chain).toEqual(["treefmt"]);
+      } finally {
+        Object.assign(BUILTIN_FORMATTERS.treefmt, original);
+      }
+    });
+
+    it("removes wildcard-handled files from per-extension groups entirely", async () => {
+      const calls: Array<{ command: string; args: string[] }> = [];
+      const runner: CommandRunner = async (command, args) => {
+        calls.push({ command, args });
+        return { exitCode: 0 };
+      };
+      const builtinConfig: FormatterConfig = {
+        formatters: {
+          prettier: { command: ["prettier", "--write"] },
+        },
+        chains: {
+          "*": ["treefmt"],
+          ".ts": ["prettier"],
+        },
+      };
+      const { BUILTIN_FORMATTERS } = await import(
+        "../src/builtin-formatters.js"
+      );
+      const original = { ...BUILTIN_FORMATTERS.treefmt };
+      // Mark every .ts file as handled.
+      const fake = fakeTreefmt(() => false);
+      BUILTIN_FORMATTERS.treefmt.discoverRoot = fake.discoverRoot;
+      BUILTIN_FORMATTERS.treefmt.buildCommand = fake.buildCommand;
+      BUILTIN_FORMATTERS.treefmt.partitionUnhandled = fake.partitionUnhandled;
+      try {
+        const formatter = new PromptAutoformatter(
+          "/repo",
+          builtinConfig,
+          runner,
+        );
+        formatter.addTouchedPath("/repo/a.ts");
+        formatter.addTouchedPath("/repo/b.ts");
+
+        await formatter.flushPrompt();
+
+        // treefmt runs once. prettier should NOT run because the wildcard
+        // claimed all files.
+        expect(calls.map((c) => c.command)).toEqual(["treefmt"]);
+      } finally {
+        Object.assign(BUILTIN_FORMATTERS.treefmt, original);
+      }
+    });
   });
 });

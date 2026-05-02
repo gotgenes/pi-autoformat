@@ -1,3 +1,4 @@
+import type { DiscoveryCache } from "./builtin-formatters.js";
 import {
   type CommandProbe,
   createCachedCommandProbe,
@@ -7,13 +8,14 @@ import type { FormatScope } from "./format-scope.js";
 import {
   type BatchRun,
   type CommandRunner,
-  executeChainGroup,
+  executeChainGroupWithPartition,
 } from "./formatter-executor.js";
 import type { ChainStep } from "./formatter-registry.js";
 import {
   type FormatterConfig,
   groupFilesByChain,
   resolveChainSteps,
+  WILDCARD_CHAIN_KEY,
 } from "./formatter-registry.js";
 import {
   type MutationSourceHandler,
@@ -44,6 +46,8 @@ export type PromptAutoformatterOptions = {
 export class PromptAutoformatter {
   private readonly queue: TouchedFilesQueue;
   private readonly commandProbe: CommandProbe;
+  /** Session-scoped cache for built-in config-root discovery. */
+  private readonly discoveryCache: DiscoveryCache = new Map();
 
   constructor(
     private readonly cwd: string,
@@ -76,29 +80,62 @@ export class PromptAutoformatter {
     // fallback command is probed at most once even when many extensions share
     // the same fallback step.
     const cachedProbe = createCachedCommandProbe(this.commandProbe);
+    const wildcardChainSteps = this.config.chains?.[WILDCARD_CHAIN_KEY];
+    const hasWildcard =
+      Array.isArray(wildcardChainSteps) && wildcardChainSteps.length > 0;
+    const wildcardHandled = new Set<string>();
 
-    for (const group of fileGroups) {
+    for (let i = 0; i < fileGroups.length; i += 1) {
+      const group = fileGroups[i];
+      // groupFilesByChain emits the wildcard group first when chains["*"] is
+      // configured, so the index is sufficient.
+      const isWildcard = hasWildcard && i === 0;
+
+      // For per-extension groups, drop any files claimed by the wildcard pass.
+      const inputFiles = isWildcard
+        ? group.files
+        : group.files.filter((f) => !wildcardHandled.has(f));
+      if (inputFiles.length === 0) {
+        continue;
+      }
+
       const resolved = resolveChainSteps(group.chain, this.config);
       if (resolved.length === 0) {
         continue;
       }
 
-      const runs = await executeChainGroup(
-        { chain: resolved, files: group.files },
+      const { runs, unhandled } = await executeChainGroupWithPartition(
+        { chain: resolved, files: inputFiles },
         this.runner,
-        { cwd: this.cwd, commandProbe: cachedProbe },
+        {
+          cwd: this.cwd,
+          commandProbe: cachedProbe,
+          builtinContext: { cache: this.discoveryCache },
+        },
       );
+
+      if (isWildcard) {
+        // Files not in the unhandled tail were claimed by a built-in step;
+        // remove them from the per-extension pass.
+        const unhandledSet = new Set(unhandled);
+        for (const file of inputFiles) {
+          if (!unhandledSet.has(file)) {
+            wildcardHandled.add(file);
+          }
+        }
+      }
 
       if (runs.length === 0) {
         // E.g. a chain consisting of a single fallback group whose
-        // alternatives are all absent from PATH. Drop the group so it does
-        // not show up as a phantom "formatted nothing" entry downstream.
+        // alternatives are all absent from PATH, or a built-in that skipped
+        // the entire batch. Drop the group so it does not show up as a
+        // phantom "formatted nothing" entry downstream.
         continue;
       }
 
       groupResults.push({
         chain: group.chain,
-        files: [...group.files],
+        files: [...inputFiles],
         runs,
       });
     }
