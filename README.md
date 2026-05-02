@@ -182,6 +182,43 @@ It does **not** check whether the tool actually has a project config to apply.
 A globally installed Biome will win a `[biome, prettier]` fallback even in repos that use Prettier — and Biome will format the file with its built-in defaults.
 If both alternatives are realistic in your environment, declare a project-level chain to disambiguate.
 
+### Wildcard chain key (`*`)
+
+In addition to per-extension keys, `chains` accepts a single `"*"` entry that applies to **every** touched file (including extensionless files).
+The wildcard chain runs first across the full batch.
+Files that any built-in dispatcher reports as unhandled fall through to the per-extension chain for their extension; files claimed by the wildcard chain are removed from the per-extension pass to avoid double-formatting.
+
+```json
+{
+  "chains": {
+    "*": [{ "fallback": ["treefmt-nix", "treefmt"] }],
+    ".ts": [{ "fallback": ["biome", "prettier"] }],
+    ".md": ["prettier", "markdownlint-cli2"]
+  }
+}
+```
+
+### Built-in `treefmt` and `treefmt-nix`
+
+Two formatter names are shipped as built-ins and may be referenced in `chains` without a `formatters` entry:
+
+- `treefmt` — walks up from each touched file to find `treefmt.toml` (preferred) or `.treefmt.toml`, then runs `treefmt --config-file <found> -- <paths...>` from the discovered root.
+- `treefmt-nix` — walks up to find `flake.nix` plus `treefmt.nix` (or `nix/treefmt.nix`), then runs `nix fmt --no-update-lock-file --no-write-lock-file -- <paths...>` from the flake root.
+
+Discovered config-root paths are cached per session.
+
+Both built-ins translate documented "no formatter matched" output into a clean **skip** outcome so chain composition works naturally:
+
+- `treefmt`: stderr lines matching `no formatter for path: <p>` mark that file as unhandled; an exit-0 run with every file unhandled is a full skip.
+- `treefmt-nix`: stderr containing `emitted 0 files for processing` is a full skip; known transient `nix` daemon errors (e.g. `cannot connect to socket`) are also skipped so a fallback alternative can run.
+
+Any other non-zero exit is reported as a real failure.
+
+When both `treefmt` and `treefmt-nix` appear in the same `fallback` group, both are PATH-available, and both resolve to a config at the **same** root, `treefmt-nix` wins regardless of declaration order.
+Different roots preserve the user's order.
+
+Declaring a `formatters` entry whose key matches a built-in name is allowed (escape hatch for custom flags) but emits a single non-fatal config issue.
+
 ## Validation and autocomplete
 
 The config file supports JSON Schema-based validation and editor autocomplete.

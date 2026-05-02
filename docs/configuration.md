@@ -416,6 +416,76 @@ built-in defaults.
 If both alternatives are realistic in your environment, declare a
 project-level chain to disambiguate.
 
+#### Wildcard chain key (`*`)
+
+In addition to per-extension keys, `chains` may declare a single `"*"`
+entry that applies to **every** touched file (including files without
+an extension).
+The wildcard chain runs first across the full batch.
+Files that any built-in dispatcher (see [built-in formatters](#built-in-formatters)
+below) reports as unhandled fall through to the per-extension chain
+for their extension; files claimed by the wildcard chain are removed
+from the per-extension pass to avoid double-formatting.
+
+```json
+{
+  "chains": {
+    "*": [{ "fallback": ["treefmt-nix", "treefmt"] }],
+    ".ts": [{ "fallback": ["biome", "prettier"] }],
+    ".md": ["prettier", "markdownlint-cli2"]
+  }
+}
+```
+
+This pattern lets a project-level dispatcher (`treefmt` or
+`treefmt-nix`) handle anything it knows about, while per-extension
+chains backstop the rest.
+
+#### Built-in formatters
+
+Two formatter names are shipped as built-ins and may be referenced in
+`chains` without a `formatters` entry:
+
+- `treefmt` — discovers `treefmt.toml` (preferred) or `.treefmt.toml`
+  by walking up from each touched file, then invokes
+  `treefmt --config-file <found> -- <paths...>` from the discovered
+  root.
+- `treefmt-nix` — discovers `flake.nix` together with `treefmt.nix`
+  (or `nix/treefmt.nix`) by walking up from each touched file, then
+  invokes
+  `nix fmt --no-update-lock-file --no-write-lock-file -- <paths...>`
+  from the flake root.
+
+Discovered config-root paths are cached for the lifetime of the
+autoformatter, so repeated flushes within a session do not re-walk the
+filesystem.
+
+Both built-ins translate documented "no formatter for path" output into
+a clean **skip** outcome so chain composition (especially `fallback`
+and the wildcard-then-per-extension flow) works naturally:
+
+- `treefmt`: stderr lines matching `no formatter for path: <p>` mark
+  that file as unhandled.
+  An exit-0 run where every input file was unhandled is treated as a
+  full skip.
+- `treefmt-nix`: stderr containing `emitted 0 files for processing`
+  is treated as a full skip; transient `nix` daemon errors
+  (e.g. `cannot connect to socket`) are also skipped so a downstream
+  fallback alternative can take over.
+
+Anything else with a non-zero exit is reported as a real failure and is
+never silently swallowed.
+
+When both `treefmt` and `treefmt-nix` appear inside the same `fallback`
+group and both are on `PATH` and both resolve to a config at the **same**
+root, `treefmt-nix` wins regardless of declaration order.
+When the roots differ, the user-declared order is preserved.
+
+Declaring a `formatters` entry whose key matches a built-in name still
+works — the user-declared definition wins, providing an escape hatch for
+custom flags — but the loader emits a single non-fatal config issue so
+the shadowing is visible.
+
 ## Merge behavior
 
 Merge order:
