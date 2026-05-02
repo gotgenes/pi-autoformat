@@ -1397,6 +1397,28 @@ describe("createAutoformatExtension", () => {
     expect(content).toContain("prettier (exit 2)");
     expect(content).toContain("SyntaxError: Unexpected token");
   });
+
+  it("does not send a follow-up on empty flush", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult(),
+        config: createFormatterConfig({ notifyAgent: true }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(0);
+  });
 });
 
 describe("buildNotifyMessageContent", () => {
