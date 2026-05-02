@@ -101,10 +101,10 @@
     },
     "chains": {
       "type": "object",
-      "description": "Ordered formatter chains keyed by file extension. Each step is either a formatter name (string) or a fallback group ({ \"fallback\": [name, ...] }) that runs the first listed formatter whose command is found on PATH.",
+      "description": "Ordered formatter chains keyed by file extension or the literal wildcard '*'. The wildcard chain runs first against the full batch of touched files; files reported as unhandled by built-in dispatchers (treefmt, treefmt-nix) fall through to their per-extension chain. Each step is either a formatter name (string) or a fallback group ({ \"fallback\": [name, ...] }) that runs the first listed formatter whose command is found on PATH.",
       "propertyNames": {
         "type": "string",
-        "pattern": "^\\..+"
+        "pattern": "^(\\..+|\\*)$"
       },
       "additionalProperties": {
         "type": "array",

@@ -26,6 +26,7 @@ type SchemaShape = {
   additionalProperties?: boolean;
   properties?: {
     chains?: {
+      propertyNames?: { pattern?: string };
       additionalProperties?: {
         type?: string;
         items?: unknown;
@@ -46,6 +47,24 @@ describe("pi-autoformat.schema.json", () => {
   it("still declares command on formatterDefinition", () => {
     const properties = schema.$defs?.formatterDefinition?.properties ?? {};
     expect(properties).toHaveProperty("command");
+  });
+
+  describe("chains key pattern", () => {
+    it("accepts dotted extension keys and the literal '*' wildcard", () => {
+      const pattern = schema.properties?.chains?.propertyNames?.pattern;
+      expect(pattern).toBeDefined();
+      const re = new RegExp(pattern as string);
+      expect(re.test(".md")).toBe(true);
+      expect(re.test(".tsx")).toBe(true);
+      expect(re.test("*")).toBe(true);
+    });
+
+    it("rejects bare names and empty strings", () => {
+      const pattern = schema.properties?.chains?.propertyNames?.pattern;
+      const re = new RegExp(pattern as string);
+      expect(re.test("md")).toBe(false);
+      expect(re.test("")).toBe(false);
+    });
   });
 
   describe("chains step shape", () => {
