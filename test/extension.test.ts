@@ -103,6 +103,21 @@ class TestPi {
     },
   };
 
+  readonly sentMessages: Array<{
+    message: Record<string, unknown>;
+    options?: Record<string, unknown>;
+  }> = [];
+
+  readonly sendMessage = ((
+    message: unknown,
+    options?: unknown,
+  ): void => {
+    this.sentMessages.push({
+      message: message as Record<string, unknown>,
+      options: options as Record<string, unknown> | undefined,
+    });
+  }) as unknown as ExtensionAPI["sendMessage"];
+
   /** Cast helper: TestPi satisfies the slice of ExtensionAPI under test. */
   asExtensionAPI(): ExtensionAPI {
     return this as unknown as ExtensionAPI;
