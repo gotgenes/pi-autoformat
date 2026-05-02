@@ -1346,6 +1346,57 @@ describe("createAutoformatExtension", () => {
     const content = pi.sentMessages[0].message.content as string;
     expect(content).toContain("/repo/src/example.ts");
   });
+
+  it("includes failure details in the follow-up message", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult(),
+        config: createFormatterConfig({ notifyAgent: true }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/ok.ts", "/repo/bad.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write"],
+                  files: ["/repo/ok.ts"],
+                  success: true,
+                  exitCode: 0,
+                },
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write"],
+                  files: ["/repo/bad.ts"],
+                  success: false,
+                  exitCode: 2,
+                  stderr: "SyntaxError: Unexpected token",
+                },
+              ],
+            },
+          ],
+        }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(1);
+    const content = pi.sentMessages[0].message.content as string;
+    expect(content).toContain("Formatted 1 file(s)");
+    expect(content).toContain("Failures:");
+    expect(content).toContain("prettier (exit 2)");
+    expect(content).toContain("SyntaxError: Unexpected token");
+  });
 });
 
 describe("buildNotifyMessageContent", () => {
