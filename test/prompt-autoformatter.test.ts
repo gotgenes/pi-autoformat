@@ -198,21 +198,6 @@ describe("PromptAutoformatter", () => {
         calls.push({ command, args });
         return { exitCode: 0 };
       };
-      const wildcardConfig: FormatterConfig = {
-        formatters: {
-          prettier: { command: ["prettier", "--write"] },
-          // Built-in shadow with a controlled fake.
-          treefmt: { command: ["treefmt", "--ci"] },
-        },
-        chains: {
-          "*": ["_treefmt_fake"],
-          ".ts": ["prettier"],
-        },
-      };
-      // Inject our fake by registering a fake formatter whose name we
-      // route through the builtin path manually. Simpler: bypass and set
-      // up a config where the wildcard chain references a real built-in.
-      // Use the actual built-in name and provide a chain config.
       const builtinConfig: FormatterConfig = {
         formatters: {
           prettier: { command: ["prettier", "--write"] },
@@ -251,10 +236,7 @@ describe("PromptAutoformatter", () => {
         });
         const prettierCalls = calls.filter((c) => c.command === "prettier");
         expect(prettierCalls).toHaveLength(1);
-        expect(prettierCalls[0]?.args).toEqual([
-          "--write",
-          "/repo/b.bin",
-        ]);
+        expect(prettierCalls[0]?.args).toEqual(["--write", "/repo/b.bin"]);
         // Sanity: groups recorded.
         expect(result.groups[0].chain).toEqual(["treefmt"]);
       } finally {

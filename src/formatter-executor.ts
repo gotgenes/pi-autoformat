@@ -180,12 +180,7 @@ export async function executeChainGroupWithPartition(
         continue;
       }
       runs.push(
-        await runOrdinaryFormatter(
-          formatter,
-          working,
-          runner,
-          options?.cwd,
-        ),
+        await runOrdinaryFormatter(formatter, working, runner, options?.cwd),
       );
       continue;
     }

@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -313,7 +313,8 @@ describe("treefmt-nix partitionUnhandled", () => {
         files,
         success: false,
         exitCode: 1,
-        stderr: "error: cannot connect to socket at /nix/var/nix/daemon-socket/socket",
+        stderr:
+          "error: cannot connect to socket at /nix/var/nix/daemon-socket/socket",
       },
       files,
     );

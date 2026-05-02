@@ -153,19 +153,14 @@ describe("groupFilesByChain", () => {
       ]);
     });
 
-    it("emits no wildcard group when chains[\"*\"] is absent", () => {
-      const groups = groupFilesByChain(
-        ["/repo/a.md"],
-        {
-          formatters: wildcardConfig.formatters,
-          chains: {
-            ".md": ["prettier"],
-          },
+    it('emits no wildcard group when chains["*"] is absent', () => {
+      const groups = groupFilesByChain(["/repo/a.md"], {
+        formatters: wildcardConfig.formatters,
+        chains: {
+          ".md": ["prettier"],
         },
-      );
-      expect(groups).toEqual([
-        { chain: ["prettier"], files: ["/repo/a.md"] },
-      ]);
+      });
+      expect(groups).toEqual([{ chain: ["prettier"], files: ["/repo/a.md"] }]);
     });
   });
 

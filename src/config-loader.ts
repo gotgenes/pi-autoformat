@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+import { BUILTIN_FORMATTERS } from "./builtin-formatters.js";
 import type { CustomMutationToolSpec } from "./custom-mutation-tools.js";
 import type { FormatScopeSetting } from "./format-scope.js";
 import {
@@ -309,6 +310,14 @@ function validateFormatters(
 
   const formatters: Record<string, FormatterDefinition> = {};
   for (const [formatterName, formatterValue] of Object.entries(value)) {
+    if (Object.hasOwn(BUILTIN_FORMATTERS, formatterName)) {
+      pushIssue(
+        issues,
+        `formatters.${formatterName}`,
+        `Shadows the built-in "${formatterName}" formatter. The user-declared definition will be used; remove this entry to fall back to the built-in.`,
+        sourcePath,
+      );
+    }
     const definition = validateFormatterDefinition(
       formatterName,
       formatterValue,
@@ -450,11 +459,11 @@ function validateChains(
 
   const chains: Record<string, ChainStep[]> = {};
   for (const [extension, chainValue] of Object.entries(value)) {
-    if (!extension.startsWith(".")) {
+    if (extension !== "*" && !extension.startsWith(".")) {
       pushIssue(
         issues,
         `chains.${extension}`,
-        'Expected a file extension key beginning with ".".',
+        'Expected a file extension key beginning with "." or the wildcard "*".',
         sourcePath,
       );
       continue;
@@ -490,7 +499,8 @@ function validateChains(
     if (stepError) {
       continue;
     }
-    chains[extension.toLowerCase()] = steps;
+    // The wildcard key is preserved verbatim; only extensions are lowercased.
+    chains[extension === "*" ? "*" : extension.toLowerCase()] = steps;
   }
 
   return chains;
@@ -1097,6 +1107,7 @@ function validateConfigObject(
     const knownFormatterNames = new Set<string>([
       ...Object.keys(DEFAULT_FORMATTER_CONFIG.formatters),
       ...Object.keys(config.formatters ?? {}),
+      ...Object.keys(BUILTIN_FORMATTERS),
     ]);
     const chains = validateChains(
       (value as Record<string, unknown>).chains,

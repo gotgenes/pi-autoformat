@@ -214,6 +214,47 @@ describe("validateUserFormatterConfig", () => {
       ]);
     });
 
+    it("accepts the literal '*' wildcard chain key", () => {
+      const result = validateUserFormatterConfig({
+        chains: { "*": ["treefmt"] },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains?.["*"]).toEqual(["treefmt"]);
+    });
+
+    it("accepts built-in formatter names without a formatters entry", () => {
+      const result = validateUserFormatterConfig({
+        chains: {
+          "*": [{ fallback: ["treefmt-nix", "treefmt"] }],
+          ".ts": ["treefmt"],
+        },
+      });
+      expect(result.issues).toEqual([]);
+      expect(result.config.chains?.["*"]).toEqual([
+        { fallback: ["treefmt-nix", "treefmt"] },
+      ]);
+      expect(result.config.chains?.[".ts"]).toEqual(["treefmt"]);
+    });
+
+    it("emits a non-fatal config issue when a user shadows a built-in name in formatters", () => {
+      const result = validateUserFormatterConfig({
+        formatters: {
+          treefmt: { command: ["treefmt", "--ci"] },
+        },
+        chains: { "*": ["treefmt"] },
+      });
+      const shadow = result.issues.filter((i) =>
+        i.path.startsWith("formatters.treefmt"),
+      );
+      expect(shadow).toHaveLength(1);
+      expect(shadow[0]?.message).toMatch(/built-in|builtin/i);
+      // The user's definition still wins (escape hatch).
+      expect(result.config.formatters?.treefmt?.command).toEqual([
+        "treefmt",
+        "--ci",
+      ]);
+    });
+
     it("rejects a non-string entry inside fallback", () => {
       const result = validateUserFormatterConfig({
         formatters: { prettier: { command: ["prettier", "--write"] } },

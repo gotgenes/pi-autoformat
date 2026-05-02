@@ -326,7 +326,13 @@ describe("executeChainGroupWithPartition (built-in steps)", () => {
     },
     buildCommand(root, files) {
       return {
-        command: ["treefmt", "--config-file", `${root}/treefmt.toml`, "--", ...files],
+        command: [
+          "treefmt",
+          "--config-file",
+          `${root}/treefmt.toml`,
+          "--",
+          ...files,
+        ],
         cwd: root,
       };
     },
@@ -496,7 +502,9 @@ describe("executeChainGroupWithPartition (built-in steps)", () => {
         // User listed treefmt before treefmt-nix; precedence rule should
         // still pick treefmt-nix when both PATH-probe true and resolve to the
         // same root.
-        chain: [{ kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] }],
+        chain: [
+          { kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] },
+        ],
         files: ["/repo/a.ts"],
       },
       runner,
@@ -548,7 +556,9 @@ describe("executeChainGroupWithPartition (built-in steps)", () => {
 
     await executeChainGroupWithPartition(
       {
-        chain: [{ kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] }],
+        chain: [
+          { kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] },
+        ],
         files: ["/repo/a.ts"],
       },
       runner,
