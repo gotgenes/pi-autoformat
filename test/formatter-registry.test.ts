@@ -95,6 +95,80 @@ describe("groupFilesByChain", () => {
     expect(groupFilesByChain([], config)).toEqual([]);
   });
 
+  describe("with a wildcard chain", () => {
+    const wildcardConfig: FormatterConfig = {
+      formatters: {
+        prettier: { command: ["prettier", "--write"] },
+        markdownlint: { command: ["markdownlint-cli2", "--fix"] },
+      },
+      chains: {
+        "*": ["treefmt"],
+        ".md": ["prettier", "markdownlint"],
+        ".ts": ["prettier"],
+      },
+    };
+
+    it("emits the wildcard group first with every touched file", () => {
+      const groups = groupFilesByChain(
+        ["/repo/a.md", "/repo/b.ts", "/repo/Makefile"],
+        wildcardConfig,
+      );
+      expect(groups[0]).toEqual({
+        chain: ["treefmt"],
+        files: ["/repo/a.md", "/repo/b.ts", "/repo/Makefile"],
+      });
+    });
+
+    it("keeps per-extension groups after the wildcard group", () => {
+      const groups = groupFilesByChain(
+        ["/repo/a.md", "/repo/b.ts"],
+        wildcardConfig,
+      );
+      expect(groups).toEqual([
+        {
+          chain: ["treefmt"],
+          files: ["/repo/a.md", "/repo/b.ts"],
+        },
+        {
+          chain: ["prettier", "markdownlint"],
+          files: ["/repo/a.md"],
+        },
+        {
+          chain: ["prettier"],
+          files: ["/repo/b.ts"],
+        },
+      ]);
+    });
+
+    it("includes extensionless files in the wildcard group only", () => {
+      const groups = groupFilesByChain(
+        ["/repo/Makefile", "/repo/notes"],
+        wildcardConfig,
+      );
+      expect(groups).toEqual([
+        {
+          chain: ["treefmt"],
+          files: ["/repo/Makefile", "/repo/notes"],
+        },
+      ]);
+    });
+
+    it("emits no wildcard group when chains[\"*\"] is absent", () => {
+      const groups = groupFilesByChain(
+        ["/repo/a.md"],
+        {
+          formatters: wildcardConfig.formatters,
+          chains: {
+            ".md": ["prettier"],
+          },
+        },
+      );
+      expect(groups).toEqual([
+        { chain: ["prettier"], files: ["/repo/a.md"] },
+      ]);
+    });
+  });
+
   describe("with fallback steps", () => {
     const fallbackConfig: FormatterConfig = {
       formatters: {

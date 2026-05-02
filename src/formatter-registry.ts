@@ -57,12 +57,20 @@ function encodeChain(chain: ChainStep[]): string {
   return chain.map(encodeChainStep).join("\u0000");
 }
 
+export const WILDCARD_CHAIN_KEY = "*";
+
 export function groupFilesByChain(
   files: string[],
   config: FormatterConfig,
 ): ChainGroup[] {
   const groups: ChainGroup[] = [];
   const indexByKey = new Map<string, number>();
+
+  const wildcardChain = config.chains?.[WILDCARD_CHAIN_KEY];
+  if (wildcardChain && wildcardChain.length > 0 && files.length > 0) {
+    groups.push({ chain: [...wildcardChain], files: [...files] });
+    indexByKey.set(`W:${encodeChain(wildcardChain)}`, 0);
+  }
 
   for (const filePath of files) {
     const extension = path.extname(filePath).toLowerCase();
@@ -73,7 +81,7 @@ export function groupFilesByChain(
     if (!chainSteps || chainSteps.length === 0) {
       continue;
     }
-    const key = encodeChain(chainSteps);
+    const key = `E:${encodeChain(chainSteps)}`;
     const existingIndex = indexByKey.get(key);
     if (existingIndex === undefined) {
       indexByKey.set(key, groups.length);
