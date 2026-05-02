@@ -125,6 +125,60 @@ function createFlushResult(): PromptAutoformatterResult {
 }
 
 describe("createAutoformatExtension", () => {
+  it("preserves the theme `this` binding when coloring the status line", async () => {
+    // Regression: Pi's real Theme.fg is an instance method that reads
+    // `this.fgColors`. If our extension destructures the method off the
+    // theme object and calls it standalone, `this` is undefined and the
+    // call throws "Cannot read properties of undefined (reading
+    // 'fgColors')". Reproduce that shape with a class-based stub.
+    class StubTheme {
+      private readonly fgColors = new Map<string, string>([
+        ["success", ""],
+        ["warning", ""],
+        ["error", ""],
+        ["dim", ""],
+        ["accent", ""],
+      ]);
+
+      fg(color: string, text: string): string {
+        // Throws "Cannot read properties of undefined (reading 'fgColors')"
+        // when called without `this`.
+        if (!this.fgColors.has(color)) {
+          throw new Error(`Unknown theme color: ${color}`);
+        }
+        return text;
+      }
+    }
+
+    const pi = new TestPi();
+    const notify = vi.fn();
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: { notify, setStatus, theme: new StubTheme() },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    setStatus.mockClear();
+    await pi.emit("agent_end", {}, ctx);
+
+    // The flush must succeed cleanly: no "Unexpected runtime error" warning,
+    // and a normal success status was written.
+    const warningCalls = notify.mock.calls.filter((c) => c[1] === "warning");
+    expect(warningCalls).toEqual([]);
+    expect(setStatus).toHaveBeenCalledWith(
+      "autoformat",
+      expect.stringContaining("autoformat:"),
+    );
+  });
+
   it("clears the autoformat status on an empty flush in the TUI", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
