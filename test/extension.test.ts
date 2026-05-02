@@ -1316,6 +1316,36 @@ describe("createAutoformatExtension", () => {
       "/repo/src/generated.ts",
     ]);
   });
+
+  it("sends a follow-up turn after formatting when notifyAgent is true", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult(),
+        config: createFormatterConfig({ notifyAgent: true }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(1);
+    expect(pi.sentMessages[0].message).toMatchObject({
+      customType: "autoformat-notify",
+    });
+    expect(pi.sentMessages[0].options).toMatchObject({
+      triggerTurn: true,
+    });
+    const content = pi.sentMessages[0].message.content as string;
+    expect(content).toContain("/repo/src/example.ts");
+  });
 });
 
 describe("buildNotifyMessageContent", () => {

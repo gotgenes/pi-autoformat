@@ -108,6 +108,7 @@ type SessionState = {
   autoformatter: PromptAutoformatterLike;
   snapshotTracker: SnapshotTracker | undefined;
   unsubscribeEventBus: (() => void) | undefined;
+  followUpPending: boolean;
 };
 
 type ExecFileError = Error & {
@@ -619,7 +620,9 @@ export function createAutoformatExtension(
     dependencies.reportConfigIssues ?? defaultReportConfigIssues;
 
   let state: SessionState | undefined;
-  let pendingFlush = Promise.resolve();
+  let pendingFlush = Promise.resolve<PromptAutoformatterResult | undefined>(
+    undefined,
+  );
 
   function ensureState(cwd: string): SessionState {
     if (state && state.cwd === cwd) {
@@ -647,11 +650,14 @@ export function createAutoformatExtension(
       autoformatter,
       snapshotTracker,
       unsubscribeEventBus,
+      followUpPending: false,
     };
     return state;
   }
 
-  function queueFlush(ctx: AutoformatExtensionContext): Promise<void> {
+  function queueFlush(
+    ctx: AutoformatExtensionContext,
+  ): Promise<PromptAutoformatterResult | undefined> {
     const sessionState = state;
     if (!sessionState) {
       return pendingFlush;
@@ -664,10 +670,12 @@ export function createAutoformatExtension(
           config: sessionState.loadResult.config,
           ctx,
         });
+        return result;
       })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
         reportMessage(ctx, `Unexpected runtime error: ${message}`, "warning");
+        return undefined;
       });
 
     return pendingFlush;
@@ -710,8 +718,27 @@ export function createAutoformatExtension(
   });
 
   pi.on("agent_end", async (_event, ctx) => {
-    ensureState(ctx.cwd);
-    await queueFlush(ctx);
+    const sessionState = ensureState(ctx.cwd);
+    const wasFollowUp = sessionState.followUpPending;
+    sessionState.followUpPending = false;
+
+    const result = await queueFlush(ctx);
+
+    if (
+      sessionState.loadResult.config.notifyAgent &&
+      !wasFollowUp &&
+      result &&
+      result.groups.length > 0
+    ) {
+      const content = buildNotifyMessageContent(result);
+      if (content) {
+        sessionState.followUpPending = true;
+        pi.sendMessage(
+          { customType: "autoformat-notify", content },
+          { triggerTurn: true },
+        );
+      }
+    }
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
