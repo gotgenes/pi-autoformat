@@ -28,19 +28,15 @@ Latest:
 {
   "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
   "commandTimeoutMs": 10000,
-  "hideSummariesInTui": false,
   "formatters": {
-    "prettier": {
-      "command": ["prettier", "--write"]
-    },
-    "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix"]
+    "biome": {
+      "command": ["biome", "check", "--write", "--files-ignore-unknown=true"]
     }
   },
   "chains": {
-    ".md": ["prettier", "markdownlint-cli2"],
-    ".ts": ["prettier"],
-    ".tsx": ["prettier"]
+    ".ts": ["biome"],
+    ".tsx": ["biome"],
+    ".json": ["biome"]
   }
 }
 ```
@@ -341,8 +337,9 @@ Example:
 
 Ordered formatter chains keyed by file extension.
 
-Formatter execution is driven by explicit `chains` only.
-If an extension has no `chains` entry, `pi-autoformat` does not run any formatter for that extension.
+No default chains are shipped — formatting is fully opt-in.
+If no `chains` are declared, `pi-autoformat` does not run any formatter for any file.
+This avoids surprises from a default formatter (e.g. prettier) conflicting with the project's chosen tool (e.g. biome).
 
 The chain order is explicit and should be preserved.
 
@@ -357,9 +354,10 @@ Example:
 ```json
 {
   "chains": {
-    ".md": ["prettier", "markdownlint-cli2"],
-    ".ts": ["prettier"],
-    ".tsx": ["prettier"]
+    ".ts": ["biome"],
+    ".tsx": ["biome"],
+    ".json": ["biome"],
+    ".md": ["markdownlint-cli2"]
   }
 }
 ```
@@ -497,15 +495,15 @@ the shadowing is visible.
 
 Merge order:
 
-1. built-in defaults
+1. built-in defaults (scalar settings only — no default chains are shipped)
 2. global config
 3. project config
 
 Recommended merge semantics:
 
 - top-level scalar values override by precedence
-- `formatters` merge by formatter name
-- `chains` merge by extension key
+- `formatters` merge by formatter name (built-in `prettier` and `markdownlint-cli2` definitions are available for convenience but inert without chains)
+- `chains` merge by extension key — no built-in chains exist, so only user-declared chains take effect
 - when a project config defines a formatter or chain key, that key replaces the lower-precedence value for that entry
 
 This keeps repo-local formatter behavior explicit while still allowing users to set global defaults such as `commandTimeoutMs`.

@@ -22,7 +22,8 @@ This package moves formatting earlier in the workflow so the agent is less likel
 
 `pi-autoformat` watches files touched by Pi mutation tools and runs configured formatter commands for just those files.
 
-Default behavior is **prompt mode**: touched files are collected during the agent's work and formatters run once after the prompt finishes.
+Formatting is **opt-in**: no formatters run until you declare `chains` in your project config.
+Touched files are collected during the agent's work and formatters run once after the prompt finishes.
 This is safer than formatting after every edit because batching avoids mutating a file in between sibling exact-text edits.
 
 Design goals:
@@ -51,19 +52,19 @@ pi install /absolute/path/to/pi-autoformat
 
 ## Quick start
 
-Create `.pi/extensions/pi-autoformat/config.json` in your project:
+Create `.pi/extensions/pi-autoformat/config.json` in your project.
+No formatters run until you declare `chains` — this avoids surprises from a default formatter conflicting with your project's chosen tool.
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
   "formatters": {
-    "prettier": { "command": ["prettier", "--write"] },
-    "markdownlint-cli2": { "command": ["markdownlint-cli2", "--fix"] }
+    "biome": { "command": ["biome", "check", "--write", "--files-ignore-unknown=true"] }
   },
   "chains": {
-    ".md": ["prettier", "markdownlint-cli2"],
-    ".ts": ["prettier"],
-    ".tsx": ["prettier"]
+    ".ts": ["biome"],
+    ".tsx": ["biome"],
+    ".json": ["biome"]
   }
 }
 ```
