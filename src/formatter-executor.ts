@@ -1,3 +1,4 @@
+import type { BuiltinFormatter } from "./builtin-formatters.js";
 import type { CommandProbe } from "./command-probe.js";
 import { defaultCommandProbe } from "./command-probe.js";
 import type {
@@ -45,9 +46,17 @@ export type ChainGroupInput = {
 export type ExecuteChainGroupOptions = {
   cwd?: string;
   commandProbe?: CommandProbe;
+  /** Optional discovery context passed to built-in formatters. */
+  builtinContext?: { cache?: Map<string, string | null> };
 };
 
-async function runFormatter(
+export type ChainGroupExecution = {
+  runs: BatchRun[];
+  /** Files not yet handled by any built-in step in this chain. */
+  unhandled: string[];
+};
+
+async function runOrdinaryFormatter(
   formatter: ResolvedFormatter,
   files: string[],
   runner: CommandRunner,
@@ -86,22 +95,97 @@ async function runFormatter(
   };
 }
 
-export async function executeChainGroup(
+type BuiltinRunResult = {
+  /** undefined when the built-in is skipped entirely (no root, treatAsSkip). */
+  run?: BatchRun;
+  handled: string[];
+  unhandled: string[];
+};
+
+async function runBuiltinFormatter(
+  formatter: ResolvedFormatter,
+  builtin: BuiltinFormatter,
+  files: string[],
+  runner: CommandRunner,
+  options: ExecuteChainGroupOptions | undefined,
+  fallbackContext?: FallbackContext,
+): Promise<BuiltinRunResult> {
+  const root = await builtin.discoverRoot(files, options?.builtinContext);
+  if (!root) {
+    // No applicable config; treat as a clean no-op so the entire batch falls
+    // through to subsequent steps / per-extension chains.
+    return { handled: [], unhandled: [...files] };
+  }
+  const built = builtin.buildCommand(root, files);
+  const [command, ...args] = built.command;
+  if (!command) {
+    return { handled: [], unhandled: [...files] };
+  }
+  const runResult = await runner(command, args, {
+    cwd: built.cwd,
+    env: formatter.environment,
+  });
+  const run: BatchRun = {
+    formatterName: formatter.name,
+    command: [command, ...args],
+    files: [...files],
+    success: runResult.exitCode === 0,
+    exitCode: runResult.exitCode,
+    stdout: runResult.stdout,
+    stderr: runResult.stderr,
+    ...(fallbackContext ? { fallbackContext } : {}),
+  };
+  const partition = builtin.partitionUnhandled(run, files);
+  if (partition.treatAsSkip) {
+    return { handled: [], unhandled: [...files] };
+  }
+  return {
+    run,
+    handled: partition.handled,
+    unhandled: partition.unhandled,
+  };
+}
+
+export async function executeChainGroupWithPartition(
   group: ChainGroupInput,
   runner: CommandRunner,
   options?: ExecuteChainGroupOptions,
-): Promise<BatchRun[]> {
+): Promise<ChainGroupExecution> {
   if (group.files.length === 0) {
-    return [];
+    return { runs: [], unhandled: [] };
   }
 
   const probe = options?.commandProbe ?? defaultCommandProbe;
   const runs: BatchRun[] = [];
+  // Working set: files that have not yet been claimed by a built-in step.
+  let working: string[] = [...group.files];
 
   for (const step of group.chain) {
+    if (working.length === 0) {
+      break;
+    }
+
     if (step.kind === "single") {
+      const formatter = step.formatter;
+      if (formatter.builtin) {
+        const result = await runBuiltinFormatter(
+          formatter,
+          formatter.builtin,
+          working,
+          runner,
+          options,
+        );
+        if (result.run) runs.push(result.run);
+        working = result.unhandled;
+        continue;
+      }
       runs.push(
-        await runFormatter(step.formatter, group.files, runner, options?.cwd),
+        await runOrdinaryFormatter(
+          formatter,
+          working,
+          runner,
+          options?.cwd,
+        ),
       );
       continue;
     }
@@ -124,10 +208,23 @@ export async function executeChainGroup(
 
     const fallbackContext: FallbackContext | undefined =
       skipped.length > 0 ? { skipped } : undefined;
-    runs.push(
-      await runFormatter(
+    if (chosen.builtin) {
+      const result = await runBuiltinFormatter(
         chosen,
-        group.files,
+        chosen.builtin,
+        working,
+        runner,
+        options,
+        fallbackContext,
+      );
+      if (result.run) runs.push(result.run);
+      working = result.unhandled;
+      continue;
+    }
+    runs.push(
+      await runOrdinaryFormatter(
+        chosen,
+        working,
         runner,
         options?.cwd,
         fallbackContext,
@@ -135,5 +232,14 @@ export async function executeChainGroup(
     );
   }
 
-  return runs;
+  return { runs, unhandled: working };
+}
+
+export async function executeChainGroup(
+  group: ChainGroupInput,
+  runner: CommandRunner,
+  options?: ExecuteChainGroupOptions,
+): Promise<BatchRun[]> {
+  const result = await executeChainGroupWithPartition(group, runner, options);
+  return result.runs;
 }

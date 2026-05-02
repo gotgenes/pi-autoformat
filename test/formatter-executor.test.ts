@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import type { BuiltinFormatter } from "../src/builtin-formatters.js";
 import {
   type CommandRunner,
   executeChainGroup,
+  executeChainGroupWithPartition,
 } from "../src/formatter-executor.js";
 import type {
   ResolvedChainStep,
@@ -294,6 +296,7 @@ describe("executeChainGroup (fallback steps)", () => {
   });
 
   it("runs subsequent single steps even when the fallback group is a no-op", async () => {
+    void 0;
     const calls: string[] = [];
     const runner: CommandRunner = async (command) => {
       calls.push(command);
@@ -312,5 +315,172 @@ describe("executeChainGroup (fallback steps)", () => {
     expect(calls).toEqual(["markdownlint-cli2"]);
     expect(runs).toHaveLength(1);
     expect(runs[0]?.formatterName).toBe("markdownlint");
+  });
+});
+
+describe("executeChainGroupWithPartition (built-in steps)", () => {
+  const fakeBuiltin: BuiltinFormatter = {
+    name: "treefmt",
+    async discoverRoot() {
+      return "/repo";
+    },
+    buildCommand(root, files) {
+      return {
+        command: ["treefmt", "--config-file", `${root}/treefmt.toml`, "--", ...files],
+        cwd: root,
+      };
+    },
+    partitionUnhandled(_run, files) {
+      // Mark every file ending in .bin as unhandled.
+      const unhandled = files.filter((f) => f.endsWith(".bin"));
+      const handled = files.filter((f) => !f.endsWith(".bin"));
+      return { handled, unhandled, treatAsSkip: false };
+    },
+  };
+
+  const builtinFormatter: ResolvedFormatter = {
+    name: "treefmt",
+    command: ["treefmt"],
+    builtin: fakeBuiltin,
+  };
+
+  it("invokes the discovered command and returns unhandled files", async () => {
+    const calls: Array<{ command: string; args: string[]; cwd?: string }> = [];
+    const runner: CommandRunner = async (command, args, options) => {
+      calls.push({ command, args, cwd: options?.cwd });
+      return { exitCode: 0, stderr: "no formatter for path: /repo/b.bin" };
+    };
+
+    const result = await executeChainGroupWithPartition(
+      {
+        chain: [{ kind: "single", formatter: builtinFormatter }],
+        files: ["/repo/a.ts", "/repo/b.bin"],
+      },
+      runner,
+    );
+
+    expect(calls).toEqual([
+      {
+        command: "treefmt",
+        args: [
+          "--config-file",
+          "/repo/treefmt.toml",
+          "--",
+          "/repo/a.ts",
+          "/repo/b.bin",
+        ],
+        cwd: "/repo",
+      },
+    ]);
+    expect(result.runs).toHaveLength(1);
+    expect(result.runs[0]?.formatterName).toBe("treefmt");
+    expect(result.unhandled).toEqual(["/repo/b.bin"]);
+  });
+
+  it("drops the run and treats every file as unhandled when treatAsSkip is true", async () => {
+    const skipBuiltin: BuiltinFormatter = {
+      ...fakeBuiltin,
+      partitionUnhandled(_run, files) {
+        return { handled: [], unhandled: [...files], treatAsSkip: true };
+      },
+    };
+    const formatter: ResolvedFormatter = {
+      name: "treefmt",
+      command: ["treefmt"],
+      builtin: skipBuiltin,
+    };
+    const runner: CommandRunner = async () => ({ exitCode: 0 });
+
+    const result = await executeChainGroupWithPartition(
+      {
+        chain: [{ kind: "single", formatter }],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+    );
+    expect(result.runs).toEqual([]);
+    expect(result.unhandled).toEqual(["/repo/a.ts"]);
+  });
+
+  it("records non-skip non-zero exits as failed runs", async () => {
+    const runner: CommandRunner = async () => ({
+      exitCode: 2,
+      stderr: "real failure",
+    });
+
+    const result = await executeChainGroupWithPartition(
+      {
+        chain: [{ kind: "single", formatter: builtinFormatter }],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+    );
+    expect(result.runs).toHaveLength(1);
+    expect(result.runs[0]).toMatchObject({
+      success: false,
+      exitCode: 2,
+      stderr: "real failure",
+    });
+  });
+
+  it("threads unhandled files into subsequent steps within the same chain", async () => {
+    const calls: Array<{ command: string; args: string[] }> = [];
+    const runner: CommandRunner = async (command, args) => {
+      calls.push({ command, args });
+      if (command === "treefmt") {
+        return { exitCode: 0, stderr: "no formatter for path: /repo/b.bin" };
+      }
+      return { exitCode: 0 };
+    };
+
+    await executeChainGroupWithPartition(
+      {
+        chain: [
+          { kind: "single", formatter: builtinFormatter },
+          { kind: "single", formatter: prettier },
+        ],
+        files: ["/repo/a.ts", "/repo/b.bin"],
+      },
+      runner,
+    );
+
+    // prettier should only see /repo/b.bin (the unhandled remainder).
+    expect(calls[1]).toEqual({
+      command: "prettier",
+      args: ["--write", "/repo/b.bin"],
+    });
+  });
+
+  it("skips the built-in step when discoverRoot returns undefined", async () => {
+    const noRootBuiltin: BuiltinFormatter = {
+      ...fakeBuiltin,
+      async discoverRoot() {
+        return undefined;
+      },
+    };
+    const formatter: ResolvedFormatter = {
+      name: "treefmt",
+      command: ["treefmt"],
+      builtin: noRootBuiltin,
+    };
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const result = await executeChainGroupWithPartition(
+      {
+        chain: [
+          { kind: "single", formatter },
+          { kind: "single", formatter: prettier },
+        ],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+    );
+
+    expect(calls).toEqual(["prettier"]);
+    expect(result.unhandled).toEqual(["/repo/a.ts"]);
   });
 });
