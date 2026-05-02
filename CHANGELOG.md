@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/gotgenes/pi-autoformat/compare/v2.4.0...v2.4.1) (2026-05-02)
+
+
+### Documentation
+
+* **retro:** add retro notes for issue [#15](https://github.com/gotgenes/pi-autoformat/issues/15) ([314f89a](https://github.com/gotgenes/pi-autoformat/commit/314f89a1eaede591426b81d7ae37e187af9f644a))
+
 ## [2.4.0](https://github.com/gotgenes/pi-autoformat/compare/v2.3.2...v2.4.0) (2026-05-02)
 
 
