@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.3.2](https://github.com/gotgenes/pi-autoformat/compare/v2.3.1...v2.3.2) (2026-05-02)
+
+
+### Documentation
+
+* document acceptance-test layout and pi binary resolution ([38f95fe](https://github.com/gotgenes/pi-autoformat/commit/38f95fe63d1c633183adf145431ad097ec97a198))
+* plan expanded acceptance test coverage ([#10](https://github.com/gotgenes/pi-autoformat/issues/10)) ([382fbfc](https://github.com/gotgenes/pi-autoformat/commit/382fbfc65d67d8c673f0d1db8a99b20619a18b46))
+* resolve pi from node_modules in acceptance plan ([#10](https://github.com/gotgenes/pi-autoformat/issues/10)) ([e262805](https://github.com/gotgenes/pi-autoformat/commit/e2628057192eae06c44e22808e161b2da579b917))
+* **retro:** add retro notes for issue [#22](https://github.com/gotgenes/pi-autoformat/issues/22) ([b0464d8](https://github.com/gotgenes/pi-autoformat/commit/b0464d8c653e6e697d3c7ba18a3135c1ad44e96f))
+
 ## [2.3.1](https://github.com/gotgenes/pi-autoformat/compare/v2.3.0...v2.3.1) (2026-05-02)
 
 
