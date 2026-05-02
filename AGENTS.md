@@ -104,6 +104,3 @@ Before implementing, understand:
 5. the need to keep schema, config loader, and docs aligned
 
 Do not assume commit-time hooks are an acceptable primary formatting mechanism.
-
-The Pi runtime API surface (`ExtensionApi`, `Theme`, event shapes) lives in `~/development/pi/pi-mono/packages/coding-agent/src`.
-Read it directly when designing against — or debugging — the extension boundary.
