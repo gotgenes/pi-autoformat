@@ -5,13 +5,25 @@ import { describe, expect, it } from "vitest";
 
 const schemaPath = join(process.cwd(), "schemas", "pi-autoformat.schema.json");
 
+type FormatterOutputSchema = {
+  type?: string;
+  additionalProperties?: boolean;
+  properties?: {
+    onFailure?: { type?: string; enum?: string[] };
+    maxBytes?: { type?: string; minimum?: number };
+    maxLines?: { type?: string; minimum?: number };
+  };
+};
+
 type SchemaShape = {
   $defs?: {
     formatterDefinition?: {
       properties?: Record<string, unknown>;
     };
     chainStep?: unknown;
+    formatterOutputReportingConfig?: FormatterOutputSchema;
   };
+  additionalProperties?: boolean;
   properties?: {
     chains?: {
       additionalProperties?: {
@@ -19,6 +31,7 @@ type SchemaShape = {
         items?: unknown;
       };
     };
+    formatterOutput?: FormatterOutputSchema | { $ref?: string };
   };
 };
 
@@ -80,6 +93,34 @@ describe("pi-autoformat.schema.json", () => {
       expect(fallback?.minItems).toBe(1);
       expect(fallback?.items?.type).toBe("string");
       expect(fallback?.items?.minLength).toBe(1);
+    });
+  });
+
+  describe("formatterOutput", () => {
+    it("declares formatterOutput as a top-level property", () => {
+      expect(schema.properties).toHaveProperty("formatterOutput");
+    });
+
+    it("forbids unknown sub-keys on formatterOutput", () => {
+      const def = schema.$defs?.formatterOutputReportingConfig;
+      expect(def?.type).toBe("object");
+      expect(def?.additionalProperties).toBe(false);
+    });
+
+    it("restricts onFailure to none/stderr/both", () => {
+      const onFailure =
+        schema.$defs?.formatterOutputReportingConfig?.properties?.onFailure;
+      expect(onFailure?.type).toBe("string");
+      expect(onFailure?.enum).toEqual(["none", "stderr", "both"]);
+    });
+
+    it("requires non-negative integer caps for maxBytes and maxLines", () => {
+      const props =
+        schema.$defs?.formatterOutputReportingConfig?.properties ?? {};
+      expect(props.maxBytes?.type).toBe("integer");
+      expect(props.maxBytes?.minimum).toBe(0);
+      expect(props.maxLines?.type).toBe("integer");
+      expect(props.maxLines?.minimum).toBe(0);
     });
   });
 });

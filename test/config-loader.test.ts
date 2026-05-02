@@ -609,6 +609,68 @@ describe("validateUserFormatterConfig: customMutationTools", () => {
   });
 });
 
+describe("validateUserFormatterConfig: formatterOutput", () => {
+  it("accepts a fully specified formatterOutput object", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: {
+        onFailure: "stderr",
+        maxBytes: 2048,
+        maxLines: 20,
+      },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.formatterOutput).toEqual({
+      onFailure: "stderr",
+      maxBytes: 2048,
+      maxLines: 20,
+    });
+  });
+
+  it("accepts a partial formatterOutput (just onFailure)", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: { onFailure: "both" },
+    });
+    expect(result.issues).toEqual([]);
+    expect(result.config.formatterOutput).toEqual({ onFailure: "both" });
+  });
+
+  it("rejects an invalid onFailure value and falls back to default", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: { onFailure: "verbose" },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "formatterOutput.onFailure",
+    ]);
+    // No formatterOutput key written when its only field was invalid; the
+    // user config falls back to defaults via createFormatterConfig.
+    expect(result.config.formatterOutput).toBeUndefined();
+  });
+
+  it("rejects negative or non-integer caps", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: { maxBytes: -1, maxLines: 1.5 },
+    });
+    const paths = result.issues.map((i) => i.path).sort();
+    expect(paths).toEqual(["formatterOutput.maxBytes", "formatterOutput.maxLines"]);
+  });
+
+  it("rejects non-object values", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: "yes",
+    });
+    expect(result.issues.map((i) => i.path)).toEqual(["formatterOutput"]);
+  });
+
+  it("rejects unknown sub-keys", () => {
+    const result = validateUserFormatterConfig({
+      formatterOutput: { onFailure: "none", weird: 1 },
+    });
+    expect(result.issues.map((i) => i.path)).toEqual([
+      "formatterOutput.weird",
+    ]);
+  });
+});
+
 describe("validateUserFormatterConfig: eventBusMutationChannel", () => {
   it("accepts enabled and channel fields", () => {
     const result = validateUserFormatterConfig({
