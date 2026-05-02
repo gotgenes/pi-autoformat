@@ -12,6 +12,24 @@ import {
 
 export type FormatMode = "tool" | "prompt" | "session";
 
+export type FormatterOutputOnFailure = "none" | "stderr" | "both";
+
+export type FormatterOutputReportingConfig = {
+  /** Which streams to include for *failed* runs. Default: "none". */
+  onFailure: FormatterOutputOnFailure;
+  /** Hard byte cap per stream per run (UTF-8 byte length). */
+  maxBytes: number;
+  /** Hard line cap per stream per run, applied after byte trimming. */
+  maxLines: number;
+};
+
+export const DEFAULT_FORMATTER_OUTPUT_REPORTING: FormatterOutputReportingConfig =
+  {
+    onFailure: "none",
+    maxBytes: 4096,
+    maxLines: 40,
+  };
+
 export type EventBusMutationChannelConfig = {
   enabled: boolean;
   channel: string;
