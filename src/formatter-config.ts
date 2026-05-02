@@ -10,8 +10,6 @@ import {
   type ShellMutationDetectionConfig,
 } from "./shell-mutation-detector.js";
 
-export type FormatMode = "tool" | "prompt" | "session";
-
 export type FormatterOutputOnFailure = "none" | "stderr" | "both";
 
 export type FormatterOutputReportingConfig = {
@@ -42,7 +40,6 @@ export const DEFAULT_EVENT_BUS_MUTATION_CHANNEL: EventBusMutationChannelConfig =
   };
 
 export type UserFormatterConfig = {
-  formatMode?: FormatMode;
   commandTimeoutMs?: number;
   hideSummariesInTui?: boolean;
   formatScope?: FormatScopeSetting;
@@ -55,7 +52,6 @@ export type UserFormatterConfig = {
 };
 
 export type AutoformatConfig = FormatterConfig & {
-  formatMode: FormatMode;
   commandTimeoutMs: number;
   hideSummariesInTui: boolean;
   formatScope: FormatScopeSetting;
@@ -68,7 +64,6 @@ export type AutoformatConfig = FormatterConfig & {
 };
 
 export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
-  formatMode: "prompt",
   commandTimeoutMs: 10000,
   hideSummariesInTui: false,
   formatScope: "repoRoot",
@@ -102,7 +97,6 @@ export function createFormatterConfig(
   userConfig?: UserFormatterConfig,
 ): AutoformatConfig {
   return {
-    formatMode: userConfig?.formatMode ?? DEFAULT_FORMATTER_CONFIG.formatMode,
     commandTimeoutMs:
       userConfig?.commandTimeoutMs ?? DEFAULT_FORMATTER_CONFIG.commandTimeoutMs,
     hideSummariesInTui:

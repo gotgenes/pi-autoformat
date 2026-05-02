@@ -15,7 +15,6 @@ describe("validateUserFormatterConfig", () => {
   it("accepts $schema and known config fields", () => {
     const result = validateUserFormatterConfig({
       $schema: "https://example.com/schema.json",
-      formatMode: "prompt",
       commandTimeoutMs: 5000,
       hideSummariesInTui: true,
       formatters: {
@@ -30,7 +29,6 @@ describe("validateUserFormatterConfig", () => {
 
     expect(result.issues).toEqual([]);
     expect(result.config).toEqual({
-      formatMode: "prompt",
       commandTimeoutMs: 5000,
       hideSummariesInTui: true,
       formatters: {
@@ -270,7 +268,6 @@ describe("validateUserFormatterConfig", () => {
 
   it("reports invalid fields and returns only valid fragments", () => {
     const result = validateUserFormatterConfig({
-      formatMode: "later",
       commandTimeoutMs: 0,
       unexpected: true,
       formatters: {
@@ -288,7 +285,6 @@ describe("validateUserFormatterConfig", () => {
       },
     });
     expect(result.issues.map((issue) => issue.path)).toEqual([
-      "formatMode",
       "commandTimeoutMs",
       "unexpected",
     ]);
@@ -305,7 +301,7 @@ describe("loadAutoformatConfig", () => {
 
     const result = loadAutoformatConfig({ cwd, agentDir });
 
-    expect(result.config.formatMode).toBe("prompt");
+    expect(result.config).not.toHaveProperty("formatMode");
     expect(result.config.commandTimeoutMs).toBe(10000);
     expect(result.config.hideSummariesInTui).toBe(false);
     expect(result.issues).toEqual([]);
@@ -325,7 +321,6 @@ describe("loadAutoformatConfig", () => {
       getGlobalConfigPath(agentDir),
       JSON.stringify(
         {
-          formatMode: "tool",
           commandTimeoutMs: 5000,
           formatters: {
             prettier: {
@@ -348,7 +343,6 @@ describe("loadAutoformatConfig", () => {
       getProjectConfigPath(cwd),
       JSON.stringify(
         {
-          formatMode: "prompt",
           hideSummariesInTui: true,
           formatters: {
             "markdownlint-cli2": {
@@ -366,7 +360,6 @@ describe("loadAutoformatConfig", () => {
 
     const result = loadAutoformatConfig({ cwd, agentDir });
 
-    expect(result.config.formatMode).toBe("prompt");
     expect(result.config.commandTimeoutMs).toBe(5000);
     expect(result.config.hideSummariesInTui).toBe(true);
     expect(result.config.formatters.prettier?.command).toEqual([

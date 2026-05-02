@@ -25,7 +25,6 @@ export {
   type AutoformatConfig,
   createFormatterConfig,
   DEFAULT_FORMATTER_CONFIG,
-  type FormatMode,
   type UserFormatterConfig,
 } from "./formatter-config.js";
 export {

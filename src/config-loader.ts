@@ -10,7 +10,6 @@ import {
   createFormatterConfig,
   DEFAULT_FORMATTER_CONFIG,
   type EventBusMutationChannelConfig,
-  type FormatMode,
   type FormatterOutputOnFailure,
   type FormatterOutputReportingConfig,
   type UserFormatterConfig,
@@ -75,24 +74,6 @@ function pushIssue(
   sourcePath?: string,
 ): void {
   issues.push({ path, message, sourcePath });
-}
-
-function validateFormatMode(
-  value: unknown,
-  issues: ConfigValidationIssue[],
-  sourcePath?: string,
-): FormatMode | undefined {
-  if (value === "tool" || value === "prompt" || value === "session") {
-    return value;
-  }
-
-  pushIssue(
-    issues,
-    "formatMode",
-    'Expected one of "tool", "prompt", or "session".',
-    sourcePath,
-  );
-  return undefined;
 }
 
 function validateCommandTimeoutMs(
@@ -1003,10 +984,12 @@ function validateConfigObject(
     }
 
     if (key === "formatMode") {
-      const formatMode = validateFormatMode(entry, issues, sourcePath);
-      if (formatMode) {
-        config.formatMode = formatMode;
-      }
+      pushIssue(
+        issues,
+        "formatMode",
+        "formatMode has been removed; prompt-end formatting is now the only mode.",
+        sourcePath,
+      );
       continue;
     }
 
@@ -1143,7 +1126,6 @@ function mergeUserConfigs(
   overrides: UserFormatterConfig,
 ): UserFormatterConfig {
   return {
-    formatMode: overrides.formatMode ?? base.formatMode,
     commandTimeoutMs: overrides.commandTimeoutMs ?? base.commandTimeoutMs,
     hideSummariesInTui: overrides.hideSummariesInTui ?? base.hideSummariesInTui,
     formatScope: overrides.formatScope ?? base.formatScope,
