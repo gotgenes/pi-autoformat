@@ -1438,6 +1438,33 @@ describe("createAutoformatExtension", () => {
 
     expect(pi.sentMessages).toHaveLength(0);
   });
+
+  it("sends at most one follow-up per user prompt (loop guard)", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult(),
+        config: createFormatterConfig({ notifyAgent: true }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+
+    // First agent_end → follow-up sent
+    await pi.emit("agent_end", {}, ctx);
+    expect(pi.sentMessages).toHaveLength(1);
+
+    // Second agent_end (the follow-up turn completing) → no second follow-up
+    await pi.emit("agent_end", {}, ctx);
+    expect(pi.sentMessages).toHaveLength(1);
+  });
 });
 
 describe("buildNotifyMessageContent", () => {
