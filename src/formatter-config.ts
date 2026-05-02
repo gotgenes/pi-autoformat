@@ -51,6 +51,7 @@ export type UserFormatterConfig = {
   eventBusMutationChannel?: Partial<EventBusMutationChannelConfig>;
   formatters?: Record<string, FormatterDefinition>;
   chains?: Record<string, ChainStep[]>;
+  formatterOutput?: Partial<FormatterOutputReportingConfig>;
 };
 
 export type AutoformatConfig = FormatterConfig & {
@@ -63,6 +64,7 @@ export type AutoformatConfig = FormatterConfig & {
   eventBusMutationChannel: EventBusMutationChannelConfig;
   formatters: Record<string, FormatterDefinition>;
   chains: Record<string, ChainStep[]>;
+  formatterOutput: FormatterOutputReportingConfig;
 };
 
 export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
@@ -81,6 +83,7 @@ export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
       command: ["markdownlint-cli2", "--fix"],
     },
   },
+  formatterOutput: DEFAULT_FORMATTER_OUTPUT_REPORTING,
   chains: {
     ".md": ["prettier", "markdownlint-cli2"],
     ".js": ["prettier"],
@@ -125,6 +128,10 @@ export function createFormatterConfig(
     chains: {
       ...DEFAULT_FORMATTER_CONFIG.chains,
       ...userConfig?.chains,
+    },
+    formatterOutput: {
+      ...DEFAULT_FORMATTER_CONFIG.formatterOutput,
+      ...userConfig?.formatterOutput,
     },
   };
 }
