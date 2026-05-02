@@ -10,11 +10,6 @@
       "type": "string",
       "description": "Optional schema URL for editor validation and autocomplete."
     },
-    "formatMode": {
-      "type": "string",
-      "enum": ["tool", "prompt", "session"],
-      "description": "When formatting should run."
-    },
     "commandTimeoutMs": {
       "type": "integer",
       "minimum": 1,
