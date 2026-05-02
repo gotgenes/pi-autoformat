@@ -20,7 +20,7 @@ Issue #10 asks us to expand acceptance coverage so we also catch payload-shape d
 - Reuse the existing skip-when-`pi`-is-absent pattern so `pnpm test` stays green for contributors without Pi installed.
 - Keep each acceptance test isolated to its own `cwd` and config, with no shared state between tests.
 - Document an opt-in, env-gated path (`PI_AUTOFORMAT_LLM_TESTS=1`) for occasional LLM-backed scenarios — design only, no LLM calls in default CI.
-- Document a clear answer for "should CI install `pi`?" so the smoke tests stop being silently skipped on CI.
+- Resolve the `pi` binary from the locally-installed `@mariozechner/pi-coding-agent` devDependency rather than the global `PATH`, so the acceptance suite runs in CI under the existing `pnpm install --frozen-lockfile` step with no workflow changes.
 
 ## Non-Goals
 
@@ -40,7 +40,7 @@ Relevant existing surface:
 
 - `test/acceptance.test.ts` — current smoke test.
   Spawns `pi --mode rpc --no-tools --no-extensions --no-session -e <EXTENSION_PATH>`, writes JSON commands to stdin, parses JSON-per-line responses from stdout.
-  Skipped when `spawnSync("pi", ["--help"]).status !== 0`.
+  Today it relies on `pi` being on `PATH` and skips when `spawnSync("pi", ["--help"]).status !== 0`; the new harness will resolve `pi` from `node_modules/.bin/pi` so the test runs whenever `pnpm install` has been done.
 - `src/extension.ts` — `createAutoformatExtension` wires three real touched-file sources: built-in `write`/`edit` `tool_result` events, `customMutationTools` declared in config, and `pi.events.on(channel, …)` for the `autoformat:touched` (configurable) channel.
 - `src/shell-mutation-detector.ts` — drives `bash` snapshot tracking (`SnapshotTracker`) plus argument parsing and wrapper matching for known mutation commands. The `bash` RPC command sends a real `tool_call` + `tool_result` pair through Pi.
 - `src/custom-mutation-tools.ts` — `parseTouchedPayload` and `createCustomToolHandlers` accept either a `{ touched: string[] }` payload (event-bus path) or extract paths from configured custom tools.
@@ -135,16 +135,30 @@ After the RPC session closes, the test reads the recorder log and asserts:
    - Sends a real `prompt` and asserts the recorder ran on the file the agent edited.
    - Documented in `docs/testing.md` (new), not enabled in CI.
 
+### Resolving the `pi` binary
+
+`@mariozechner/pi-coding-agent` is already a devDependency and ships a `pi` bin, so `pnpm install` produces a working `node_modules/.bin/pi`.
+The new harness resolves that path explicitly instead of relying on the global `PATH`:
+
+```typescript
+// test/helpers/rpc.ts
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
+
+export const PI_BIN = resolve("node_modules/.bin/pi");
+export const piAvailable = existsSync(PI_BIN);
+```
+
+Benefits:
+
+- CI runs the acceptance suite with no workflow changes — `pnpm install --frozen-lockfile` already provides `pi`.
+- The Pi version is pinned by `pnpm-lock.yaml`, so CI and local runs use the same binary.
+- Contributors who ran `pnpm install` immediately get the acceptance suite; no separate global install.
+
 ### Skip semantics
 
-`describeIfPi` continues to skip when `pi --help` exits non-zero.
+`describeIfPi` becomes a safety net rather than the default contributor experience: it skips only when `node_modules/.bin/pi` is missing (e.g. someone forgot `pnpm install`).
 LLM-gated scenarios add a second guard on `PI_AUTOFORMAT_LLM_TESTS` and the relevant API key.
-
-### CI provisioning
-
-Recommend the project install `pi` in its GitHub Actions workflow (a single `npm i -g @mariozechner/pi-coding-agent` step before `pnpm test`) so the acceptance suite runs by default.
-This keeps the skip path for contributors but ensures CI does not silently skip the most valuable tests.
-The recommendation lands in `docs/testing.md`; the actual workflow change is a follow-up commit owned by the same plan but kept in its own commit so it is easy to revert.
 
 ## Module-Level Changes
 
@@ -156,9 +170,10 @@ The recommendation lands in `docs/testing.md`; the actual workflow change is a f
 - `test/fixtures/event-bus-emitter.ts` — new companion extension.
 - `test/fixtures/custom-tool-emitter.ts` — new companion extension.
 - `test/fixtures/formatter-recorder.sh` — new helper script (executable, POSIX `sh`).
-- `docs/testing.md` — new. Documents acceptance-test layout, skip behavior, `PI_AUTOFORMAT_LLM_TESTS` flag, and the CI provisioning recommendation.
+- `docs/testing.md` — new. Documents acceptance-test layout, the `node_modules/.bin/pi` resolution behavior, skip semantics, and the env-gated `PI_AUTOFORMAT_LLM_TESTS` design.
 - `README.md` — small "Testing" pointer to `docs/testing.md`.
-- `.github/workflows/*.yml` — install `pi` before `pnpm test` (separate commit, optional based on review).
+
+No `.github/workflows/*.yml` change is needed: the existing `pnpm install --frozen-lockfile` step already provides `pi` via the devDependency.
 
 No production source under `src/` is expected to change.
 If the new tests expose a real bug, that bug is fixed in its own commit on the same branch.
@@ -167,8 +182,9 @@ If the new tests expose a real bug, that bug is fixed in its own commit on the s
 
 1. **Refactor the RPC harness (red → green).**
    Move `runRpcSession` into `test/helpers/rpc.ts`; add `extraExtensions` and an `events` array in the result.
-   Update `test/acceptance.test.ts` to use it; the existing test must still pass.
-   Commit: `test: extract shared rpc harness for acceptance tests`.
+   Resolve `PI_BIN` from `node_modules/.bin/pi` and key `piAvailable` off `existsSync(PI_BIN)` instead of `spawnSync("pi", ["--help"])`.
+   Update `test/acceptance.test.ts` to use the new harness; the existing test must still pass.
+   Commit: `test: extract shared rpc harness and resolve pi from node_modules`.
 
 2. **Bash mutation acceptance (red → green).**
    Add `test/fixtures/formatter-recorder.sh`. Add `test/acceptance-bash-mutation.test.ts` that writes a project config pointing at the recorder, sends a `bash` RPC command that creates `out.ts`, triggers a flush, and asserts the recorder log.
@@ -183,13 +199,9 @@ If the new tests expose a real bug, that bug is fixed in its own commit on the s
    Commit: `test: add acceptance coverage for customMutationTools dispatch`.
 
 5. **Documentation (green → docs).**
-   Add `docs/testing.md` with skip semantics, env-gated LLM scenario design, and the CI provisioning recommendation.
+   Add `docs/testing.md` describing the `node_modules/.bin/pi` resolution, skip semantics, and the env-gated LLM scenario design.
    Update `README.md` to point at it.
-   Commit: `docs: document acceptance-test layout and CI provisioning`.
-
-6. **CI provisioning (optional, separate commit).**
-   Update the GitHub Actions workflow to install `pi` before `pnpm test`.
-   Commit: `ci: install pi cli so acceptance suite runs in ci`.
+   Commit: `docs: document acceptance-test layout and pi binary resolution`.
 
 ## Risks and Mitigations
 
@@ -215,7 +227,5 @@ If the new tests expose a real bug, that bug is fixed in its own commit on the s
 
 - Does Pi's RPC mode let a companion extension emit a `tool_result` event for a tool the LLM never called?
   If yes, the custom-tool scenario can be fully deterministic; if no, we accept the EventBus path as the primary acceptance signal and treat custom-tool dispatch as covered by unit tests + (eventually) LLM-gated runs.
-- Which CI provider/workflow file gets the `pi` install step, and is the upstream package name `@mariozechner/pi-coding-agent` the right `npm i -g` target?
-  Confirm before landing the CI change in step 6.
 - Should `formatter-recorder` be a POSIX shell script or a Node script?
   Pick during step 2 based on the project's existing CI matrix; Node is more portable, shell is simpler.
