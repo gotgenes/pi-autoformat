@@ -466,6 +466,210 @@ describe("createAutoformatExtension", () => {
     );
   });
 
+  describe("formatterOutput surfacing", () => {
+    function makeFailedFlushResult(stdout: string, stderr: string) {
+      return {
+        groups: [
+          {
+            chain: ["prettier"],
+            files: ["/repo/a.ts"],
+            runs: [
+              {
+                formatterName: "prettier",
+                command: ["prettier", "--write", "/repo/a.ts"],
+                files: ["/repo/a.ts"],
+                success: false,
+                exitCode: 2,
+                stdout,
+                stderr,
+              },
+            ],
+          },
+        ],
+      };
+    }
+
+    it("omits stdout/stderr by default (onFailure: none)", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const ctx = createContext({ ui: { notify } });
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi
+            .fn()
+            .mockResolvedValue(makeFailedFlushResult("out", "err")),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      expect(notify).toHaveBeenCalledWith(
+        "Formatter failures in 1 batch:\nprettier (exit 2): /repo/a.ts",
+        "warning",
+      );
+    });
+
+    it("appends only stderr under onFailure: stderr", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const ctx = createContext({ ui: { notify } });
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue({
+          ...createLoadResult("prompt"),
+          config: createFormatterConfig({
+            formatMode: "prompt",
+            formatterOutput: { onFailure: "stderr" },
+          }),
+        }),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi
+            .fn()
+            .mockResolvedValue(
+              makeFailedFlushResult("chatty stdout", "boom!\nat foo"),
+            ),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      const [message] = notify.mock.calls[0];
+      expect(message).toContain("prettier (exit 2): /repo/a.ts");
+      expect(message).toContain("  stderr:");
+      expect(message).toContain("    boom!");
+      expect(message).toContain("    at foo");
+      expect(message).not.toContain("  stdout:");
+      expect(message).not.toContain("chatty stdout");
+    });
+
+    it("appends stdout above stderr under onFailure: both", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const ctx = createContext({ ui: { notify } });
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue({
+          ...createLoadResult("prompt"),
+          config: createFormatterConfig({
+            formatMode: "prompt",
+            formatterOutput: { onFailure: "both" },
+          }),
+        }),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi
+            .fn()
+            .mockResolvedValue(makeFailedFlushResult("out line", "err line")),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      const [message] = notify.mock.calls[0];
+      const stdoutIdx = message.indexOf("  stdout:");
+      const stderrIdx = message.indexOf("  stderr:");
+      expect(stdoutIdx).toBeGreaterThanOrEqual(0);
+      expect(stderrIdx).toBeGreaterThan(stdoutIdx);
+      expect(message).toContain("    out line");
+      expect(message).toContain("    err line");
+    });
+
+    it("omits an empty stdout block under onFailure: both", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const ctx = createContext({ ui: { notify } });
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue({
+          ...createLoadResult("prompt"),
+          config: createFormatterConfig({
+            formatMode: "prompt",
+            formatterOutput: { onFailure: "both" },
+          }),
+        }),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi
+            .fn()
+            .mockResolvedValue(makeFailedFlushResult("", "only stderr")),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      const [message] = notify.mock.calls[0];
+      expect(message).not.toContain("  stdout:");
+      expect(message).toContain("  stderr:");
+      expect(message).toContain("    only stderr");
+    });
+
+    it("never annotates successful runs even under onFailure: both", async () => {
+      const pi = new TestPi();
+      const notify = vi.fn();
+      const setStatus = vi.fn();
+      const ctx = createContext({
+        ui: {
+          notify,
+          setStatus,
+          theme: { fg: (_name: string, text: string) => text },
+        },
+      });
+
+      createAutoformatExtension(pi, {
+        loadConfig: vi.fn().mockReturnValue({
+          ...createLoadResult("prompt"),
+          config: createFormatterConfig({
+            formatMode: "prompt",
+            formatterOutput: { onFailure: "both" },
+          }),
+        }),
+        createAutoformatter: vi.fn().mockReturnValue({
+          recordToolResult: vi.fn(),
+          flushPrompt: vi.fn().mockResolvedValue({
+            groups: [
+              {
+                chain: ["prettier"],
+                files: ["/repo/a.ts"],
+                runs: [
+                  {
+                    formatterName: "prettier",
+                    command: ["prettier", "--write", "/repo/a.ts"],
+                    files: ["/repo/a.ts"],
+                    success: true,
+                    exitCode: 0,
+                    stdout: "would never be shown",
+                    stderr: "deprecation notice",
+                  },
+                ],
+              },
+            ],
+          }),
+        }),
+      });
+
+      await pi.emit("session_start", {}, ctx);
+      await pi.emit("agent_end", {}, ctx);
+
+      // No failure notify; success status only.
+      expect(notify).not.toHaveBeenCalled();
+      const statusTexts = setStatus.mock.calls
+        .map((c) => c[1])
+        .filter((t): t is string => typeof t === "string");
+      for (const text of statusTexts) {
+        expect(text).not.toContain("would never be shown");
+        expect(text).not.toContain("deprecation notice");
+      }
+    });
+  });
+
   it("hides interactive success summaries when configured", async () => {
     const pi = new TestPi();
     const notify = vi.fn();
