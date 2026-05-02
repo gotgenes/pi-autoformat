@@ -426,11 +426,20 @@ function themed(
   color: ThemeColorName,
   text: string,
 ): string {
-  const fg = ctx.ui.theme?.fg;
-  if (typeof fg !== "function") {
+  const theme = ctx.ui.theme;
+  if (!theme || typeof theme.fg !== "function") {
     return text;
   }
-  return fg(color, text);
+  // Call through the theme object so `this` stays bound. Pi's real Theme.fg
+  // is an instance method that reads `this.fgColors`; destructuring it would
+  // throw "Cannot read properties of undefined (reading 'fgColors')".
+  try {
+    return theme.fg(color, text);
+  } catch {
+    // Defensive: a theme that throws on a known color name (e.g. a partial
+    // palette) should degrade to plain text rather than break the flush.
+    return text;
+  }
 }
 
 function formatStatusLine(
