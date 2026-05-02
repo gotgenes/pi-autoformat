@@ -371,9 +371,7 @@ describe("createAutoformatExtension", () => {
       expect.stringContaining("markdownlint (exit 1): /repo/x.md"),
       "warning",
     );
-    const failureStatus = setStatus.mock.calls.find(
-      (c) => c[1] !== undefined,
-    );
+    const failureStatus = setStatus.mock.calls.find((c) => c[1] !== undefined);
     expect(failureStatus).toBeDefined();
     const text = failureStatus?.[1] as string;
     expect(text).toContain("1 batch failed");
@@ -552,10 +550,56 @@ describe("createAutoformatExtension", () => {
       expect.stringContaining("prettier (exit 2): /repo/a.ts"),
       "warning",
     );
-    const failureStatus = setStatus.mock.calls.find(
-      (c) => c[1] !== undefined,
-    );
+    const failureStatus = setStatus.mock.calls.find((c) => c[1] !== undefined);
     expect(failureStatus?.[1]).toContain("1 batch failed");
+  });
+
+  it("keeps non-interactive success summaries on console.log without setStatus", async () => {
+    const pi = new TestPi();
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const setStatus = vi.fn();
+    const ctx: TestContext = {
+      cwd: "/repo",
+      hasUI: false,
+      ui: { notify: vi.fn(), setStatus },
+    };
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/a.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: [],
+                  files: ["/repo/a.ts"],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(log).toHaveBeenCalledWith(
+      "[pi-autoformat] Autoformatted 1 file: /repo/a.ts",
+    );
+    expect(setStatus).not.toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
+
+    log.mockRestore();
+    warn.mockRestore();
   });
 
   it("reports non-interactive formatter failures via console warnings", async () => {
@@ -602,6 +646,11 @@ describe("createAutoformatExtension", () => {
       "[pi-autoformat] Formatter failures in 2 batches:\nprettier (exit 2): /repo/README.md\nmarkdownlint-cli2 (exit 1): /repo/README.md",
     );
     expect(log).not.toHaveBeenCalled();
+    // Non-interactive contexts must never touch setStatus even when present.
+    const setStatus = (ctx.ui as { setStatus?: ReturnType<typeof vi.fn> })
+      .setStatus;
+    expect(setStatus).toBeDefined();
+    expect(setStatus).not.toHaveBeenCalled();
 
     warn.mockRestore();
     log.mockRestore();

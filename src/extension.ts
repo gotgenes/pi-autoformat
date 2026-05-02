@@ -33,12 +33,7 @@ const COMMAND_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 
 type NotificationType = "info" | "warning" | "error";
 
-type ThemeColorName =
-  | "success"
-  | "warning"
-  | "error"
-  | "dim"
-  | "accent";
+type ThemeColorName = "success" | "warning" | "error" | "dim" | "accent";
 
 type ExtensionUILike = {
   notify(message: string, type?: NotificationType): void;
@@ -496,10 +491,7 @@ function defaultReportFlushResult(
   if (summary.failureBatchCount > 0) {
     const message = buildLegacyFailureMessage(summary);
     if (options.ctx.hasUI) {
-      setAutoformatStatus(
-        options.ctx,
-        formatStatusLine(summary, options.ctx),
-      );
+      setAutoformatStatus(options.ctx, formatStatusLine(summary, options.ctx));
     }
     reportMessage(options.ctx, message, "warning");
     return;
@@ -511,14 +503,15 @@ function defaultReportFlushResult(
   }
 
   if (options.ctx.hasUI) {
-    setAutoformatStatus(
-      options.ctx,
-      formatStatusLine(summary, options.ctx),
-    );
+    setAutoformatStatus(options.ctx, formatStatusLine(summary, options.ctx));
     return;
   }
 
-  reportMessage(options.ctx, buildLegacySuccessMessage(result, summary), "info");
+  reportMessage(
+    options.ctx,
+    buildLegacySuccessMessage(result, summary),
+    "info",
+  );
 }
 
 function defaultReportConfigIssues(
