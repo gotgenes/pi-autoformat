@@ -206,6 +206,30 @@ export async function executeChainGroupWithPartition(
       continue;
     }
 
+    // Precedence rule: when treefmt would win and treefmt-nix is also viable
+    // and resolves to a config at the same root, prefer treefmt-nix.
+    if (chosen.builtin?.name === "treefmt") {
+      const nixAlt = step.alternatives.find(
+        (a) => a.builtin?.name === "treefmt-nix" && probe(a.command[0] ?? ""),
+      );
+      if (nixAlt && chosen.builtin && nixAlt.builtin) {
+        const treefmtRoot = await chosen.builtin.discoverRoot(
+          working,
+          options?.builtinContext,
+        );
+        const nixRoot = await nixAlt.builtin.discoverRoot(
+          working,
+          options?.builtinContext,
+        );
+        if (treefmtRoot && nixRoot && treefmtRoot === nixRoot) {
+          // Bump treefmt into skipped (so the user sees fallback annotation)
+          // and switch to treefmt-nix.
+          skipped.push(chosen.name);
+          chosen = nixAlt;
+        }
+      }
+    }
+
     const fallbackContext: FallbackContext | undefined =
       skipped.length > 0 ? { skipped } : undefined;
     if (chosen.builtin) {

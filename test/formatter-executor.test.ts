@@ -451,6 +451,113 @@ describe("executeChainGroupWithPartition (built-in steps)", () => {
     });
   });
 
+  it("prefers treefmt-nix over treefmt at the same root inside a fallback group regardless of declaration order", async () => {
+    const sharedRoot = "/repo";
+    const treefmtNix: ResolvedFormatter = {
+      name: "treefmt-nix",
+      command: ["treefmt-nix"],
+      builtin: {
+        name: "treefmt-nix",
+        async discoverRoot() {
+          return sharedRoot;
+        },
+        buildCommand(root, files) {
+          return { command: ["nix", "fmt", "--", ...files], cwd: root };
+        },
+        partitionUnhandled(_run, files) {
+          return { handled: [...files], unhandled: [], treatAsSkip: false };
+        },
+      },
+    };
+    const treefmtBuiltin: ResolvedFormatter = {
+      name: "treefmt",
+      command: ["treefmt"],
+      builtin: {
+        name: "treefmt",
+        async discoverRoot() {
+          return sharedRoot;
+        },
+        buildCommand(root, files) {
+          return { command: ["treefmt", "--", ...files], cwd: root };
+        },
+        partitionUnhandled(_run, files) {
+          return { handled: [...files], unhandled: [], treatAsSkip: false };
+        },
+      },
+    };
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    const result = await executeChainGroupWithPartition(
+      {
+        // User listed treefmt before treefmt-nix; precedence rule should
+        // still pick treefmt-nix when both PATH-probe true and resolve to the
+        // same root.
+        chain: [{ kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] }],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: () => true },
+    );
+
+    expect(calls).toEqual(["nix"]);
+    expect(result.runs[0]?.formatterName).toBe("treefmt-nix");
+  });
+
+  it("keeps user order when the two built-ins resolve to different roots", async () => {
+    const treefmtNix: ResolvedFormatter = {
+      name: "treefmt-nix",
+      command: ["treefmt-nix"],
+      builtin: {
+        name: "treefmt-nix",
+        async discoverRoot() {
+          return "/other";
+        },
+        buildCommand(root, files) {
+          return { command: ["nix", "fmt", "--", ...files], cwd: root };
+        },
+        partitionUnhandled(_run, files) {
+          return { handled: [...files], unhandled: [], treatAsSkip: false };
+        },
+      },
+    };
+    const treefmtBuiltin: ResolvedFormatter = {
+      name: "treefmt",
+      command: ["treefmt"],
+      builtin: {
+        name: "treefmt",
+        async discoverRoot() {
+          return "/repo";
+        },
+        buildCommand(root, files) {
+          return { command: ["treefmt", "--", ...files], cwd: root };
+        },
+        partitionUnhandled(_run, files) {
+          return { handled: [...files], unhandled: [], treatAsSkip: false };
+        },
+      },
+    };
+    const calls: string[] = [];
+    const runner: CommandRunner = async (command) => {
+      calls.push(command);
+      return { exitCode: 0 };
+    };
+
+    await executeChainGroupWithPartition(
+      {
+        chain: [{ kind: "fallback", alternatives: [treefmtBuiltin, treefmtNix] }],
+        files: ["/repo/a.ts"],
+      },
+      runner,
+      { commandProbe: () => true },
+    );
+
+    expect(calls).toEqual(["treefmt"]);
+  });
+
   it("skips the built-in step when discoverRoot returns undefined", async () => {
     const noRootBuiltin: BuiltinFormatter = {
       ...fakeBuiltin,
