@@ -4,7 +4,7 @@
 
 `pi-autoformat` is a Pi extension package that automatically formats files after the agent edits them.
 
-## The problem this package solves
+## Why
 
 Pi agents often make correct code changes that still fail at commit time because formatting was never run.
 
@@ -22,22 +22,18 @@ This package moves formatting earlier in the workflow so the agent is less likel
 
 `pi-autoformat` watches files touched by Pi mutation tools and runs configured formatter commands for just those files.
 
+Default behavior is **prompt mode**: touched files are collected during the agent's work and formatters run once after the prompt finishes.
+This is safer than formatting after every edit because batching avoids mutating a file in between sibling exact-text edits.
+
 Design goals:
 
 - format only files the agent touched
-- prefer prompt-end batching over per-edit formatting by default
-- support repository-specific formatter commands
-- support ordered formatter chains for the same extension
-- surface formatter failures without blocking the original edit by default
-- keep reporting concise by default, with interactive summaries and non-interactive logs
-- delegate formatter configuration to the formatters themselves — `pi-autoformat` invokes the tool and lets it find its own project config (Prettier, Biome, ESLint, ruff, etc. all walk up the directory tree natively)
+- prefer prompt-end batching over per-edit formatting
+- support repository-specific formatter commands and ordered chains
+- surface formatter failures without blocking the original edit
+- delegate formatter configuration to the formatters themselves — `pi-autoformat` invokes the tool and lets it find its own project config
 
-Default behavior is **prompt mode**:
-
-- collect files touched during the agent's work
-- run formatters once after the prompt finishes
-
-This is safer than formatting immediately after every edit because prompt-end batching avoids mutating a file in between sibling exact-text edits.
+See [docs/configuration.md](docs/configuration.md) for the full reference.
 
 ## Installation
 
@@ -53,32 +49,16 @@ pi install npm:@gotgenes/pi-autoformat
 pi install /absolute/path/to/pi-autoformat
 ```
 
-## Configuration
+## Quick start
 
-`pi-autoformat` uses extension-owned config files.
-
-Configuration is loaded in this order:
-
-1. global: `~/.pi/agent/extensions/pi-autoformat/config.json`
-2. project: `.pi/extensions/pi-autoformat/config.json`
-
-Project config overrides global config.
-
-Example:
+Create `.pi/extensions/pi-autoformat/config.json` in your project:
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
-  "formatMode": "prompt",
-  "commandTimeoutMs": 10000,
-  "hideSummariesInTui": false,
   "formatters": {
-    "prettier": {
-      "command": ["prettier", "--write"]
-    },
-    "markdownlint-cli2": {
-      "command": ["markdownlint-cli2", "--fix"]
-    }
+    "prettier": { "command": ["prettier", "--write"] },
+    "markdownlint-cli2": { "command": ["markdownlint-cli2", "--fix"] }
   },
   "chains": {
     ".md": ["prettier", "markdownlint-cli2"],
@@ -88,204 +68,19 @@ Example:
 }
 ```
 
-See [docs/configuration.md](docs/configuration.md) for the full configuration reference.
+For everything else — formatter chains and fallback groups, wildcard chains, built-in `treefmt` and `treefmt-nix` support, format scope, shell mutation coverage, custom mutation tools, the event-bus channel, and detailed failure output — see [docs/configuration.md](docs/configuration.md).
 
-Formatter command resolution in v1 stays intentionally simple:
+## Reporting
 
-- built-in formatter commands run from the project `cwd`
-- the extension uses the inherited environment and `PATH`
-- if your environment manager already resolves the right tool for that directory, plain commands like `prettier` can work as-is
-- if your repo needs wrappers such as `pnpm exec`, `npx`, `mise x`, or similar, configure those commands explicitly in `formatters`
+By default, `pi-autoformat` reports concise success summaries and per-batch failure summaries.
 
-## Reporting behavior
+In the interactive TUI, success renders as a persistent one-line footer status (e.g. `✓ autoformat: 3 files (biome, prettier)`).
+Failures fire a warning notification and leave an error-styled footer status (e.g. `✗ autoformat: 1 batch failed (prettier)`) that persists until the next flush.
 
-By default, `pi-autoformat` reports:
+Outside the TUI, summaries are written as prefixed log lines on `stdout` / `stderr`.
 
-- concise success summaries after formatting runs
-- per-batch failure summaries when one or more formatter commands fail
-- config validation issues detected while loading global or project config
-
-In the interactive TUI, success summaries render as a persistent one-line footer status (e.g. `✓ autoformat: 3 files (biome, prettier)`) instead of a transient notification, so you can see at a glance that formatters ran in the background.
-Failures both fire a warning notification (so they catch your eye once) and leave an error-styled footer status (e.g. `✗ autoformat: 1 batch failed (prettier)`) that persists until the next flush, so a dismissed toast does not lose the failure.
-
-Outside the TUI, summaries are written as prefixed log lines on `stdout` / `stderr` (`console.log` / `console.warn`).
-
-Set `hideSummariesInTui` to `true` if you want to suppress the interactive success status line.
-Failures still surface via both the notification and the footer status regardless of this setting.
-
-## Formatter model
-
-Each formatter entry can define:
-
-- `command: string[]`
-- `environment?: Record<string, string>`
-- `disabled?: boolean`
-
-The legacy `extensions: string[]` field has been removed.
-Dispatch is driven entirely by `chains`.
-On-disk configs that still carry `extensions` continue to load but emit a one-line deprecation notice.
-
-Touched file paths are appended to `command` as trailing arguments; each chain step runs once per group of files that share the same chain.
-Do not include `$FILE` in `command` — it is rejected at config-load time.
-
-Chains are configured separately so formatter order is explicit.
-
-For v1, `pi-autoformat` runs formatters only when a `chains` entry exists for the file extension.
-
-Example Markdown chain:
-
-1. `prettier --write`
-2. `markdownlint-cli2 --fix`
-
-### Fallback chain steps
-
-A chain step can be either a formatter name (string) or a fallback group:
-
-```json
-{
-  "chains": {
-    ".ts": [{ "fallback": ["biome", "prettier"] }],
-    ".tsx": [{ "fallback": ["biome", "prettier"] }],
-    ".md": [
-      { "fallback": ["biome", "prettier"] },
-      "markdownlint-cli2"
-    ]
-  }
-}
-```
-
-A fallback group runs the **first** listed formatter whose command is found on `PATH`.
-The only fallthrough trigger is "command not found":
-
-| Outcome of formatter N in the group | Behavior                                                        |
-| ----------------------------------- | --------------------------------------------------------------- |
-| Command not on `PATH`               | Skip, try N+1                                                   |
-| Command runs, exits 0               | Success, stop the group                                         |
-| Command runs, exits non-zero        | Failure, stop the group, report — do **not** mask by retrying   |
-| All formatters missing from `PATH`  | Group is a no-op                                                |
-
-When a non-first alternative wins, reporting names which one ran (e.g. `prettier (fallback after biome unavailable)`) so you understand what actually formatted the files.
-
-#### Choosing a chain strategy
-
-**Recommendation: prefer project-level `chains` over relying on global fallback.**
-
-Global `chains` in `~/.pi/agent/extensions/pi-autoformat/config.json` are convenient defaults, but become ambiguous in repositories that use multiple alternative tools.
-A project-level `chains` declaration in `.pi/extensions/pi-autoformat/config.json` is explicit, predictable, and survives team handoffs.
-
-Global fallback (`[{ "fallback": ["biome", "prettier"] }]`) is best treated as a "what to do when no project config has opinions" backstop — useful for ad-hoc repos, not load-bearing for projects you maintain.
-
-#### Fallback caveat
-
-**Fallback chooses the first formatter whose command is on `PATH`.**
-It does **not** check whether the tool actually has a project config to apply.
-A globally installed Biome will win a `[biome, prettier]` fallback even in repos that use Prettier — and Biome will format the file with its built-in defaults.
-If both alternatives are realistic in your environment, declare a project-level chain to disambiguate.
-
-### Wildcard chain key (`*`)
-
-In addition to per-extension keys, `chains` accepts a single `"*"` entry that applies to **every** touched file (including extensionless files).
-The wildcard chain runs first across the full batch.
-Files that any built-in dispatcher reports as unhandled fall through to the per-extension chain for their extension; files claimed by the wildcard chain are removed from the per-extension pass to avoid double-formatting.
-
-```json
-{
-  "chains": {
-    "*": [{ "fallback": ["treefmt-nix", "treefmt"] }],
-    ".ts": [{ "fallback": ["biome", "prettier"] }],
-    ".md": ["prettier", "markdownlint-cli2"]
-  }
-}
-```
-
-### Built-in `treefmt` and `treefmt-nix`
-
-Two formatter names are shipped as built-ins and may be referenced in `chains` without a `formatters` entry:
-
-- `treefmt` — walks up from each touched file to find `treefmt.toml` (preferred) or `.treefmt.toml`, then runs `treefmt --config-file <found> -- <paths...>` from the discovered root.
-- `treefmt-nix` — walks up to find `flake.nix` plus `treefmt.nix` (or `nix/treefmt.nix`), then runs `nix fmt --no-update-lock-file --no-write-lock-file -- <paths...>` from the flake root.
-
-Discovered config-root paths are cached per session.
-
-Both built-ins translate documented "no formatter matched" output into a clean **skip** outcome so chain composition works naturally:
-
-- `treefmt`: stderr lines matching `no formatter for path: <p>` mark that file as unhandled; an exit-0 run with every file unhandled is a full skip.
-- `treefmt-nix`: stderr containing `emitted 0 files for processing` is a full skip; known transient `nix` daemon errors (e.g. `cannot connect to socket`) are also skipped so a fallback alternative can run.
-
-Any other non-zero exit is reported as a real failure.
-
-When both `treefmt` and `treefmt-nix` appear in the same `fallback` group, both are PATH-available, and both resolve to a config at the **same** root, `treefmt-nix` wins regardless of declaration order.
-Different roots preserve the user's order.
-
-Declaring a `formatters` entry whose key matches a built-in name is allowed (escape hatch for custom flags) but emits a single non-fatal config issue.
-
-## Validation and autocomplete
-
-The config file supports JSON Schema-based validation and editor autocomplete.
-
-You can use either:
-
-- the default-branch URL for the latest schema
-- a pinned release-tag URL for reproducible validation
-
-Examples:
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json"
-}
-```
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/v1.0.0/schemas/pi-autoformat.schema.json"
-}
-```
-
-## Status
-
-This project is under active development.
-
-The current repository includes the formatter registry, execution pipeline, touched-file queue, config loading and validation, and the Pi extension runtime wiring for prompt-, tool-, and session-mode flushing.
-
-Known v1 limitations:
-
-- shell mutation detection is opt-in (see below) and intentionally narrow
-- reporting is intentionally concise by default; opt in to surfacing failed-run stderr (or stdout+stderr) via the `formatterOutput` config option (see [docs/configuration.md](docs/configuration.md#formatteroutput))
-
-## Format scope
-
-Paths outside the configured `formatScope` are silently dropped from the touched-files queue.
-The default scope is the Git toplevel detected via `git rev-parse --show-toplevel`, with a fallback to `cwd` when not in a Git repo.
-Set `formatScope` to `"cwd"` for a strict cwd subtree, or to an array of paths for an explicit allowlist.
-Symlinks are resolved on both sides so workspace deps that link out of the scope are correctly excluded.
-
-This is a tightening of v1 behavior: previously `write` / `edit` would format any path the agent supplied.
-The new default closes a latent gap and is almost certainly what users already expect; configure `formatScope` explicitly if you need a broader allowlist.
-
-## Shell mutation coverage
-
-Files modified by `bash` invocations — `sed -i`, `mv`, `cp`, `touch`, `tee`, redirections, codegen wrappers — are invisible to the touched-files queue by default.
-Set `shellMutationDetection.enabled` to `true` to opt in.
-
-Three explicit, low-noise strategies are available:
-
-1. **Argument parsing** (default on once detection is enabled) for a small whitelist of known mutating commands.
-   Bails on pipelines, command substitutions, and unknown flags.
-2. **Snapshot tracking** of explicit globs around each `bash` invocation — files whose mtime advanced are treated as touched.
-3. **User-declared wrappers** that already print the files they touched on stdout (one per line).
-
-See [docs/configuration.md](docs/configuration.md) for the full configuration.
-
-## Custom mutation tools and EventBus integration
-
-Beyond `write`, `edit`, and shell detection, two additional surfaces let project- and extension-specific mutations participate in the same prompt-end formatter pipeline:
-
-- `customMutationTools` — declare extra tool names the agent calls and which fields in their `input` payload point at touched files.
-  Useful for codegen tools, custom refactor commands, etc.
-- `eventBusMutationChannel` — subscribe to Pi's shared event bus (default channel `autoformat:touched`) and accept `{ path }` or `{ paths }` payloads from peer extensions.
-
-Both feed the same touched-files queue, so scope filtering, dedupe, and formatter resolution behave identically to the built-in tools.
+Set `hideSummariesInTui` to `true` to suppress the success status line.
+To surface failed-run stderr (or stdout+stderr), see [`formatterOutput`](docs/configuration.md#formatteroutput).
 
 ## Development
 
