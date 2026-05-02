@@ -210,6 +210,58 @@ Payload shape (best-effort; malformed payloads are silently ignored):
 Paths are resolved relative to the session `cwd` and pass through the same
 scope filter as every other mutation source.
 
+### `formatterOutput`
+
+Optional surfacing of formatter `stdout` / `stderr` in failure reports.
+Defaults preserve concise reporting: nothing extra is printed and the option is fully opt-in.
+
+Successful runs are **never** annotated with output, even when this option is enabled — the goal is debugging failures, not chatter on the happy path.
+
+Fields:
+
+- `onFailure` (`"none" | "stderr" | "both"`, default `"none"`) — which streams of a failed run to include beneath each failure line.
+  `"stderr"` is sufficient for most formatters (parser errors, lint diagnostics).
+  `"both"` also includes `stdout`, useful for tools that report on `stdout` (some compilers / type-checkers).
+- `maxBytes` (integer, default `4096`) — hard byte cap per stream per failed run, applied to UTF-8 byte length.
+  When the cap is exceeded, the **tail** of the output is preserved (which is where stack traces and parser errors usually sit) and a `... (truncated, N earlier bytes)` marker is prefixed.
+- `maxLines` (integer, default `40`) — hard line cap per stream per failed run, applied after byte trimming.
+  When exceeded, a `... (truncated, N earlier lines)` marker is prefixed.
+
+Example (enable `stderr` surfacing with the defaults):
+
+```json
+{
+  "formatterOutput": {
+    "onFailure": "stderr"
+  }
+}
+```
+
+Example (more aggressive caps for terse environments):
+
+```json
+{
+  "formatterOutput": {
+    "onFailure": "both",
+    "maxBytes": 1024,
+    "maxLines": 20
+  }
+}
+```
+
+The rendered failure block looks like:
+
+```text
+Formatter failures in 1 batch:
+prettier (exit 2): src/foo.ts
+  stderr:
+    src/foo.ts: SyntaxError: Unexpected token (3:11)
+    > 3 | export const = 3
+        |              ^
+```
+
+Identical content is used in both the interactive TUI (via `notify`) and non-interactive log output (via `console.warn`).
+
 ### `hideSummariesInTui`
 
 Whether formatter **success** summaries should be hidden in the interactive TUI.

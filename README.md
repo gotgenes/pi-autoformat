@@ -214,7 +214,7 @@ The current repository includes the formatter registry, execution pipeline, touc
 Known v1 limitations:
 
 - shell mutation detection is opt-in (see below) and intentionally narrow
-- reporting is intentionally concise and does not yet expose full formatter stdout/stderr by default
+- reporting is intentionally concise by default; opt in to surfacing failed-run stderr (or stdout+stderr) via the `formatterOutput` config option (see [docs/configuration.md](docs/configuration.md#formatteroutput))
 
 ## Format scope
 
