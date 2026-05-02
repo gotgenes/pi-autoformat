@@ -1,6 +1,13 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+  ToolCallEvent,
+  ToolResultEvent,
+} from "@mariozechner/pi-coding-agent";
+
 import {
   AUTOFORMAT_EXTENSION_ID,
   type ConfigValidationIssue,
@@ -34,24 +41,40 @@ const COMMAND_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 
 type NotificationType = "info" | "warning" | "error";
 
-type ThemeColorName = "success" | "warning" | "error" | "dim" | "accent";
+/**
+ * Narrowed view of Pi's real `ExtensionContext`, restricted to the surface
+ * this extension actually consumes. Pi's full `ExtensionContext` requires
+ * `sessionManager`, `modelRegistry`, `model`, `signal`, `isIdle`, etc., none
+ * of which the autoformatter uses. Internal helpers take this narrow alias
+ * so test stubs do not have to fabricate the unused fields, while top-level
+ * `pi.on(...)` handlers still receive the real `ExtensionContext` from Pi.
+ */
+type AutoformatExtensionContext = Pick<ExtensionContext, "cwd" | "hasUI" | "ui">;
 
-type ExtensionUILike = {
-  notify(message: string, type?: NotificationType): void;
-  setStatus?(key: string, text: string | undefined): void;
-  theme?: { fg(name: ThemeColorName | string, text: string): string };
+/**
+ * Pi's `ExtensionAPI` does not currently expose the optional event-bus
+ * channel that we use for `eventBusMutationChannel`. We widen the imported
+ * type at the single call site (`subscribeToEventBus`) instead of redeclaring
+ * the whole API. Delete this alias and use `ExtensionAPI` directly once Pi
+ * adds `events` to `ExtensionAPI` proper.
+ */
+type ExtensionAPIWithEvents = ExtensionAPI & {
+  events?: {
+    on(channel: string, handler: (data: unknown) => void): () => void;
+  };
 };
 
-type ExtensionContextLike = {
-  cwd: string;
-  hasUI: boolean;
-  ui: ExtensionUILike;
-};
+/**
+ * Re-export of Pi's real `ExtensionAPI` under the legacy `ExtensionApiLike`
+ * name so any downstream importer that pinned to the old alias keeps working.
+ * Internal usage prefers `ExtensionAPI` directly.
+ */
+export type ExtensionApiLike = ExtensionAPI;
 
 const AUTOFORMAT_STATUS_KEY = "autoformat";
 
 function setAutoformatStatus(
-  ctx: ExtensionContextLike,
+  ctx: AutoformatExtensionContext,
   text: string | undefined,
 ): void {
   if (!ctx.hasUI) {
@@ -62,43 +85,6 @@ function setAutoformatStatus(
   }
   ctx.ui.setStatus(AUTOFORMAT_STATUS_KEY, text);
 }
-
-type TextContentLike = { type?: string; text?: string };
-
-type ToolResultEventLike = {
-  toolName: string;
-  input: unknown;
-  isError: boolean;
-  /** Optional output content from the tool. Bash provides stdout text here. */
-  content?: TextContentLike[];
-};
-
-type ToolCallEventLike = {
-  toolName: string;
-  input: unknown;
-};
-
-type ExtensionHandler<TEvent> = (
-  event: TEvent,
-  ctx: ExtensionContextLike,
-) => void | Promise<void>;
-
-export type ExtensionApiLike = {
-  on(eventName: "session_start", handler: ExtensionHandler<unknown>): void;
-  on(
-    eventName: "tool_call",
-    handler: ExtensionHandler<ToolCallEventLike>,
-  ): void;
-  on(
-    eventName: "tool_result",
-    handler: ExtensionHandler<ToolResultEventLike>,
-  ): void;
-  on(eventName: "agent_end", handler: ExtensionHandler<unknown>): void;
-  on(eventName: "session_shutdown", handler: ExtensionHandler<unknown>): void;
-  events?: {
-    on(channel: string, handler: (data: unknown) => void): () => void;
-  };
-};
 
 type PromptAutoformatterLike = Pick<
   PromptAutoformatter,
@@ -115,13 +101,13 @@ type AutoformatExtensionDependencies = {
     result: PromptAutoformatterResult,
     options: {
       config: AutoformatConfig;
-      ctx: ExtensionContextLike;
+      ctx: AutoformatExtensionContext;
     },
   ) => void;
   reportConfigIssues?: (
     issues: ConfigValidationIssue[],
     options: {
-      ctx: ExtensionContextLike;
+      ctx: AutoformatExtensionContext;
     },
   ) => void;
 };
@@ -254,7 +240,7 @@ function extractBashCommand(payload: unknown): string | undefined {
 }
 
 function subscribeToEventBus(
-  pi: ExtensionApiLike,
+  pi: ExtensionAPIWithEvents,
   config: AutoformatConfig,
   autoformatter: PromptAutoformatterLike,
 ): (() => void) | undefined {
@@ -270,21 +256,27 @@ function subscribeToEventBus(
   });
 }
 
-function extractToolOutputText(content: TextContentLike[] | undefined): string {
+function extractToolOutputText(
+  content: ToolResultEvent["content"] | undefined,
+): string {
   if (!content) {
     return "";
   }
   const parts: string[] = [];
   for (const item of content) {
-    if (item && typeof item.text === "string") {
-      parts.push(item.text);
+    if (
+      item &&
+      "text" in item &&
+      typeof (item as { text?: unknown }).text === "string"
+    ) {
+      parts.push((item as { text: string }).text);
     }
   }
   return parts.join("\n");
 }
 
 function reportMessage(
-  ctx: ExtensionContextLike,
+  ctx: AutoformatExtensionContext,
   message: string,
   type: NotificationType,
 ): void {
@@ -421,8 +413,10 @@ function summarizeFlush(
   };
 }
 
+type ThemeColorName = "success" | "warning" | "error" | "dim" | "accent";
+
 function themed(
-  ctx: ExtensionContextLike,
+  ctx: AutoformatExtensionContext,
   color: ThemeColorName,
   text: string,
 ): string {
@@ -444,7 +438,7 @@ function themed(
 
 function formatStatusLine(
   summary: FlushSummary,
-  ctx: ExtensionContextLike,
+  ctx: AutoformatExtensionContext,
 ): string {
   const fileWord = summary.fileCount === 1 ? "file" : "files";
   const formatters =
@@ -500,7 +494,7 @@ function defaultReportFlushResult(
   result: PromptAutoformatterResult,
   options: {
     config: AutoformatConfig;
-    ctx: ExtensionContextLike;
+    ctx: AutoformatExtensionContext;
   },
 ): void {
   if (result.groups.length === 0) {
@@ -539,7 +533,7 @@ function defaultReportFlushResult(
 function defaultReportConfigIssues(
   issues: ConfigValidationIssue[],
   options: {
-    ctx: ExtensionContextLike;
+    ctx: AutoformatExtensionContext;
   },
 ): void {
   if (issues.length === 0) {
@@ -568,7 +562,7 @@ function defaultReportConfigIssues(
 }
 
 export function createAutoformatExtension(
-  pi: ExtensionApiLike,
+  pi: ExtensionAPI,
   dependencies: AutoformatExtensionDependencies = {},
 ): void {
   const loadConfig =
@@ -599,7 +593,7 @@ export function createAutoformatExtension(
         : undefined;
     const autoformatter = createAutoformatter(cwd, loadResult.config);
     const unsubscribeEventBus = subscribeToEventBus(
-      pi,
+      pi as ExtensionAPIWithEvents,
       loadResult.config,
       autoformatter,
     );
@@ -613,7 +607,7 @@ export function createAutoformatExtension(
     return state;
   }
 
-  function queueFlush(ctx: ExtensionContextLike): Promise<void> {
+  function queueFlush(ctx: AutoformatExtensionContext): Promise<void> {
     const sessionState = state;
     if (!sessionState) {
       return pendingFlush;
@@ -641,7 +635,7 @@ export function createAutoformatExtension(
     setAutoformatStatus(ctx, undefined);
   });
 
-  pi.on("tool_call", async (event, ctx) => {
+  pi.on("tool_call", async (event: ToolCallEvent, ctx) => {
     if (event.toolName !== "bash") {
       return;
     }
@@ -649,7 +643,7 @@ export function createAutoformatExtension(
     sessionState.snapshotTracker?.before();
   });
 
-  pi.on("tool_result", async (event, ctx) => {
+  pi.on("tool_result", async (event: ToolResultEvent, ctx) => {
     if (event.isError) {
       return;
     }
@@ -699,6 +693,6 @@ export function createAutoformatExtension(
   });
 }
 
-export default function autoformatExtension(pi: ExtensionApiLike): void {
+export default function autoformatExtension(pi: ExtensionAPI): void {
   createAutoformatExtension(pi);
 }
