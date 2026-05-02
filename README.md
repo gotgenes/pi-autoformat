@@ -68,7 +68,7 @@ Create `.pi/extensions/pi-autoformat/config.json` in your project:
 }
 ```
 
-For everything else — formatter chains and fallback groups, wildcard chains, built-in `treefmt` and `treefmt-nix` support, format scope, shell mutation coverage, custom mutation tools, the event-bus channel, and detailed failure output — see [docs/configuration.md](docs/configuration.md).
+For everything else — formatter chains and fallback groups, wildcard chains, built-in `treefmt` and `treefmt-nix` support, format scope, shell mutation coverage, custom mutation tools, the event-bus channel, agent follow-up notifications (`notifyAgent`), and detailed failure output — see [docs/configuration.md](docs/configuration.md).
 
 ## Reporting
 

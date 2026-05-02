@@ -27,7 +27,6 @@ Latest:
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/gotgenes/pi-autoformat/main/schemas/pi-autoformat.schema.json",
-  "formatMode": "prompt",
   "commandTimeoutMs": 10000,
   "hideSummariesInTui": false,
   "formatters": {
@@ -56,15 +55,23 @@ Pinned tag:
 
 ## Settings reference
 
-### `formatMode`
+### `notifyAgent`
 
-When formatting should run.
+After formatting, send a follow-up message to the agent listing formatted files and any failures, triggering one more agent turn so it can react (e.g., amend a commit or fix formatter errors).
 
-Allowed values:
+Default: `false`.
 
-- `"prompt"` — format once after the agent finishes the prompt. Recommended default.
-- `"tool"` — format immediately after each successful mutation tool call.
-- `"session"` — accumulate touched files and format on session shutdown.
+Example:
+
+```json
+{
+  "notifyAgent": true
+}
+```
+
+When enabled and the formatter produces results, the extension calls `pi.sendMessage()` with `{ triggerTurn: true }` after the prompt-end flush.
+The agent sees which files were formatted and any failure details (stderr, exit code), and gets one turn to react.
+A loop guard ensures at most one follow-up per user prompt.
 
 ### `commandTimeoutMs`
 
@@ -501,7 +508,7 @@ Recommended merge semantics:
 - `chains` merge by extension key
 - when a project config defines a formatter or chain key, that key replaces the lower-precedence value for that entry
 
-This keeps repo-local formatter behavior explicit while still allowing users to set global defaults such as `formatMode`.
+This keeps repo-local formatter behavior explicit while still allowing users to set global defaults such as `commandTimeoutMs`.
 
 ## Notes
 
