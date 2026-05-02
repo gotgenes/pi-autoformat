@@ -82,18 +82,7 @@ export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
     },
   },
   formatterOutput: DEFAULT_FORMATTER_OUTPUT_REPORTING,
-  chains: {
-    ".md": ["prettier", "markdownlint-cli2"],
-    ".js": ["prettier"],
-    ".cjs": ["prettier"],
-    ".mjs": ["prettier"],
-    ".jsx": ["prettier"],
-    ".ts": ["prettier"],
-    ".tsx": ["prettier"],
-    ".json": ["prettier"],
-    ".yaml": ["prettier"],
-    ".yml": ["prettier"],
-  },
+  chains: {},
 };
 
 export function createFormatterConfig(
@@ -124,10 +113,7 @@ export function createFormatterConfig(
       ...DEFAULT_FORMATTER_CONFIG.formatters,
       ...userConfig?.formatters,
     },
-    chains: {
-      ...DEFAULT_FORMATTER_CONFIG.chains,
-      ...userConfig?.chains,
-    },
+    chains: userConfig?.chains ?? {},
     formatterOutput: {
       ...DEFAULT_FORMATTER_CONFIG.formatterOutput,
       ...userConfig?.formatterOutput,

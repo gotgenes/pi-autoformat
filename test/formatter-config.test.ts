@@ -7,20 +7,12 @@ import {
 } from "../src/formatter-config.js";
 
 describe("createFormatterConfig", () => {
-  it("includes default formatters by default", () => {
+  it("includes default formatter definitions but no default chains", () => {
     const config = createFormatterConfig();
 
     expect(Object.keys(config.formatters)).toContain("prettier");
     expect(Object.keys(config.formatters)).toContain("markdownlint-cli2");
-  });
-
-  it("does not declare an extensions field on built-in formatters", () => {
-    expect(DEFAULT_FORMATTER_CONFIG.formatters.prettier).not.toHaveProperty(
-      "extensions",
-    );
-    expect(
-      DEFAULT_FORMATTER_CONFIG.formatters["markdownlint-cli2"],
-    ).not.toHaveProperty("extensions");
+    expect(Object.keys(config.chains)).toHaveLength(0);
   });
 
   it("allows overriding builtin formatter commands", () => {
@@ -103,7 +95,7 @@ describe("createFormatterConfig", () => {
     });
   });
 
-  it("merges chain configuration while preserving user order", () => {
+  it("preserves user-declared chain order", () => {
     const userConfig: UserFormatterConfig = {
       chains: {
         ".md": ["markdownlint-cli2", "prettier"],

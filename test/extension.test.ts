@@ -1299,6 +1299,9 @@ describe("createAutoformatExtension", () => {
           command: ["true"],
         },
       },
+      chains: {
+        ".ts": ["echo-fmt"],
+      },
     });
     const autoformatter = createDefaultAutoformatter("/repo", config);
 
