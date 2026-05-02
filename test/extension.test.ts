@@ -1465,6 +1465,37 @@ describe("createAutoformatExtension", () => {
     await pi.emit("agent_end", {}, ctx);
     expect(pi.sentMessages).toHaveLength(1);
   });
+
+  it("resets follow-up guard across user prompts", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue({
+        ...createLoadResult(),
+        config: createFormatterConfig({ notifyAgent: true }),
+      }),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+
+    // First prompt cycle
+    await pi.emit("agent_end", {}, ctx);
+    expect(pi.sentMessages).toHaveLength(1);
+    // Follow-up turn completes
+    await pi.emit("agent_end", {}, ctx);
+    expect(pi.sentMessages).toHaveLength(1);
+
+    // Second prompt cycle — new user prompt triggers fresh agent loop
+    // The guard should have reset after the follow-up's agent_end
+    await pi.emit("agent_end", {}, ctx);
+    expect(pi.sentMessages).toHaveLength(2);
+  });
 });
 
 describe("buildNotifyMessageContent", () => {
