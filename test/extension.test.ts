@@ -128,11 +128,9 @@ class TestPi {
   }
 }
 
-function createLoadResult(
-  formatMode: "tool" | "prompt" | "session",
-): LoadConfigResult {
+function createLoadResult(): LoadConfigResult {
   return {
-    config: createFormatterConfig({ formatMode }),
+    config: createFormatterConfig(),
     globalConfigPath: "/global/config.json",
     projectConfigPath: "/project/config.json",
     issues: [],
@@ -187,7 +185,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
@@ -221,7 +219,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
@@ -249,7 +247,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -298,7 +296,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -369,7 +367,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -423,7 +421,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -481,7 +479,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -523,7 +521,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext({ ui: { notify } });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -585,7 +583,7 @@ describe("createAutoformatExtension", () => {
       const ctx = createContext({ ui: { notify } });
 
       createAutoformatExtension(pi.asExtensionAPI(), {
-        loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+        loadConfig: vi.fn().mockReturnValue(createLoadResult()),
         createAutoformatter: vi.fn().mockReturnValue({
           recordToolResult: vi.fn(),
           flushPrompt: vi
@@ -610,9 +608,8 @@ describe("createAutoformatExtension", () => {
 
       createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
-          ...createLoadResult("prompt"),
+          ...createLoadResult(),
           config: createFormatterConfig({
-            formatMode: "prompt",
             formatterOutput: { onFailure: "stderr" },
           }),
         }),
@@ -645,9 +642,8 @@ describe("createAutoformatExtension", () => {
 
       createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
-          ...createLoadResult("prompt"),
+          ...createLoadResult(),
           config: createFormatterConfig({
-            formatMode: "prompt",
             formatterOutput: { onFailure: "both" },
           }),
         }),
@@ -678,9 +674,8 @@ describe("createAutoformatExtension", () => {
 
       createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
-          ...createLoadResult("prompt"),
+          ...createLoadResult(),
           config: createFormatterConfig({
-            formatMode: "prompt",
             formatterOutput: { onFailure: "both" },
           }),
         }),
@@ -715,9 +710,8 @@ describe("createAutoformatExtension", () => {
 
       createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
-          ...createLoadResult("prompt"),
+          ...createLoadResult(),
           config: createFormatterConfig({
-            formatMode: "prompt",
             formatterOutput: {
               onFailure: "stderr",
               maxBytes: 1024,
@@ -774,9 +768,8 @@ describe("createAutoformatExtension", () => {
 
       createAutoformatExtension(pi.asExtensionAPI(), {
         loadConfig: vi.fn().mockReturnValue({
-          ...createLoadResult("prompt"),
+          ...createLoadResult(),
           config: createFormatterConfig({
-            formatMode: "prompt",
             formatterOutput: { onFailure: "both" },
           }),
         }),
@@ -833,9 +826,8 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         config: createFormatterConfig({
-          formatMode: "prompt",
           hideSummariesInTui: true,
         }),
       }),
@@ -867,9 +859,8 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         config: createFormatterConfig({
-          formatMode: "prompt",
           hideSummariesInTui: true,
         }),
       }),
@@ -919,7 +910,7 @@ describe("createAutoformatExtension", () => {
     };
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -962,7 +953,7 @@ describe("createAutoformatExtension", () => {
     const ctx = createContext({ hasUI: false });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({
@@ -1016,11 +1007,11 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         issues: [
           {
-            path: "formatMode",
-            message: "Expected a valid mode.",
+            path: "commandTimeoutMs",
+            message: "Expected a positive integer.",
             sourcePath: "/repo/.pi/extensions/pi-autoformat/config.json",
           },
         ],
@@ -1034,7 +1025,7 @@ describe("createAutoformatExtension", () => {
     await pi.emit("session_start", {}, ctx);
 
     expect(warn).toHaveBeenCalledWith(
-      "[pi-autoformat] Configuration issues detected:\n/repo/.pi/extensions/pi-autoformat/config.json formatMode: Expected a valid mode.",
+      "[pi-autoformat] Configuration issues detected:\n/repo/.pi/extensions/pi-autoformat/config.json commandTimeoutMs: Expected a positive integer.",
     );
 
     warn.mockRestore();
@@ -1052,7 +1043,7 @@ describe("createAutoformatExtension", () => {
     });
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue({
         recordToolResult: vi.fn(),
         flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
@@ -1077,7 +1068,7 @@ describe("createAutoformatExtension", () => {
     const reportFlushResult = vi.fn();
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult,
     });
@@ -1106,7 +1097,7 @@ describe("createAutoformatExtension", () => {
     expect(reportFlushResult).toHaveBeenCalledTimes(1);
   });
 
-  it("flushes immediately in tool mode", async () => {
+  it("ignores failed tool results", async () => {
     const pi = new TestPi();
     const ctx = createContext();
     const autoformatter = {
@@ -1115,35 +1106,7 @@ describe("createAutoformatExtension", () => {
     };
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("tool")),
-      createAutoformatter: vi.fn().mockReturnValue(autoformatter),
-      reportFlushResult: vi.fn(),
-    });
-
-    await pi.emit(
-      "tool_result",
-      {
-        toolName: "edit",
-        input: { path: "src/example.ts", edits: [] },
-        isError: false,
-      },
-      ctx,
-    );
-
-    expect(autoformatter.recordToolResult).toHaveBeenCalledTimes(1);
-    expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
-  });
-
-  it("flushes on session shutdown in session mode and ignores failed tool results", async () => {
-    const pi = new TestPi();
-    const ctx = createContext();
-    const autoformatter = {
-      recordToolResult: vi.fn(),
-      flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
-    };
-
-    createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("session")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
     });
@@ -1158,10 +1121,8 @@ describe("createAutoformatExtension", () => {
       },
       ctx,
     );
-    await pi.emit("session_shutdown", {}, ctx);
 
     expect(autoformatter.recordToolResult).not.toHaveBeenCalled();
-    expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
   });
 
   it("forwards bash tool output to the autoformatter", async () => {
@@ -1174,7 +1135,7 @@ describe("createAutoformatExtension", () => {
     };
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
     });
@@ -1204,11 +1165,11 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         issues: [
           {
-            path: "formatMode",
-            message: "Expected a valid mode.",
+            path: "commandTimeoutMs",
+            message: "Expected a positive integer.",
             sourcePath: "/repo/.pi/extensions/pi-autoformat/config.json",
           },
         ],
@@ -1225,8 +1186,8 @@ describe("createAutoformatExtension", () => {
     expect(reportConfigIssues).toHaveBeenCalledWith(
       [
         {
-          path: "formatMode",
-          message: "Expected a valid mode.",
+          path: "commandTimeoutMs",
+          message: "Expected a positive integer.",
           sourcePath: "/repo/.pi/extensions/pi-autoformat/config.json",
         },
       ],
@@ -1245,7 +1206,7 @@ describe("createAutoformatExtension", () => {
     };
 
     createAutoformatExtension(pi.asExtensionAPI(), {
-      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
       createAutoformatter: vi.fn().mockReturnValue(autoformatter),
       reportFlushResult: vi.fn(),
     });
@@ -1275,9 +1236,8 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         config: createFormatterConfig({
-          formatMode: "prompt",
           eventBusMutationChannel: { enabled: false },
         }),
       }),
@@ -1300,9 +1260,8 @@ describe("createAutoformatExtension", () => {
 
     createAutoformatExtension(pi.asExtensionAPI(), {
       loadConfig: vi.fn().mockReturnValue({
-        ...createLoadResult("prompt"),
+        ...createLoadResult(),
         config: createFormatterConfig({
-          formatMode: "prompt",
           eventBusMutationChannel: { channel: "my:channel" },
         }),
       }),

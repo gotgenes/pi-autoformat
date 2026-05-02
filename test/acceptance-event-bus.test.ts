@@ -74,7 +74,6 @@ describeIfPi("acceptance: autoformat:touched event bus", () => {
     writeFileSync(
       join(configDir, "config.json"),
       JSON.stringify({
-        formatMode: "session",
         eventBusMutationChannel: {
           enabled: true,
           channel: "autoformat:touched",

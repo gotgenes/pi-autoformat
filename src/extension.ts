@@ -653,17 +653,10 @@ export function createAutoformatExtension(
       }
     }
 
-    if (sessionState.loadResult.config.formatMode === "tool") {
-      await queueFlush(ctx);
-    }
   });
 
   pi.on("agent_end", async (_event, ctx) => {
-    const sessionState = ensureState(ctx.cwd);
-    if (sessionState.loadResult.config.formatMode !== "prompt") {
-      return;
-    }
-
+    ensureState(ctx.cwd);
     await queueFlush(ctx);
   });
 
@@ -671,10 +664,6 @@ export function createAutoformatExtension(
     const sessionState = state;
     if (!sessionState) {
       return;
-    }
-
-    if (sessionState.loadResult.config.formatMode === "session") {
-      await queueFlush(ctx);
     }
 
     setAutoformatStatus(ctx, undefined);
