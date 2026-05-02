@@ -623,6 +623,7 @@ export function createAutoformatExtension(
   pi.on("session_start", async (_event, ctx) => {
     const sessionState = ensureState(ctx.cwd);
     reportConfigIssues(sessionState.loadResult.issues, { ctx });
+    setAutoformatStatus(ctx, undefined);
   });
 
   pi.on("tool_call", async (event, ctx) => {
@@ -677,6 +678,7 @@ export function createAutoformatExtension(
       await queueFlush(ctx);
     }
 
+    setAutoformatStatus(ctx, undefined);
     sessionState.unsubscribeEventBus?.();
     state = undefined;
   });

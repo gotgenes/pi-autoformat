@@ -638,6 +638,33 @@ describe("createAutoformatExtension", () => {
     warn.mockRestore();
   });
 
+  it("clears the autoformat status on session_start and session_shutdown", async () => {
+    const pi = new TestPi();
+    const setStatus = vi.fn();
+    const ctx = createContext({
+      ui: {
+        notify: vi.fn(),
+        setStatus,
+        theme: { fg: (_name: string, text: string) => text },
+      },
+    });
+
+    createAutoformatExtension(pi, {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult("prompt")),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    expect(setStatus).toHaveBeenCalledWith("autoformat", undefined);
+
+    setStatus.mockClear();
+    await pi.emit("session_shutdown", {}, ctx);
+    expect(setStatus).toHaveBeenCalledWith("autoformat", undefined);
+  });
+
   it("records successful tool results and flushes at prompt end in prompt mode", async () => {
     const pi = new TestPi();
     const ctx = createContext();
