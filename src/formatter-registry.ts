@@ -1,5 +1,10 @@
 import path from "node:path";
 
+import {
+  type BuiltinFormatter,
+  getBuiltinFormatter,
+} from "./builtin-formatters.js";
+
 export type FormatterDefinition = {
   command: string[];
   environment?: Record<string, string>;
@@ -27,6 +32,7 @@ export type ResolvedFormatter = {
   name: string;
   command: string[];
   environment?: Record<string, string>;
+  builtin?: BuiltinFormatter;
 };
 
 export type ResolvedSingleStep = {
@@ -113,14 +119,27 @@ function resolveFormatterByName(
   config: FormatterConfig,
 ): ResolvedFormatter | undefined {
   const formatter = config.formatters[name];
-  if (!formatter || formatter.disabled) {
-    return undefined;
+  if (formatter) {
+    if (formatter.disabled) {
+      return undefined;
+    }
+    return {
+      name,
+      command: [...formatter.command],
+      environment: formatter.environment,
+    };
   }
-  return {
-    name,
-    command: [...formatter.command],
-    environment: formatter.environment,
-  };
+  const builtin = getBuiltinFormatter(name);
+  if (builtin) {
+    return {
+      name,
+      // Built-ins build their argv at execution time from the discovered
+      // config root. The placeholder here is replaced by the executor.
+      command: [builtin.name],
+      builtin,
+    };
+  }
+  return undefined;
 }
 
 export function resolveChainSteps(
