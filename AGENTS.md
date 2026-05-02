@@ -83,6 +83,7 @@ issue_title: "Batch-by-default formatter dispatch"     # required
 - Add extension lifecycle tests once the runtime entrypoint exists.
 - Vitest uses esbuild and does not typecheck.
   Run `pnpm run typecheck` for type-only changes (red/green via `tsc --noEmit`).
+- Do not insert no-op statements (`void 0;`, unused locals) in tests just to make an `Edit` tool's `oldText` unique — widen `oldText` with surrounding context instead.
 
 ## Commits
 

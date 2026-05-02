@@ -70,8 +70,6 @@ describe("resolveChainSteps with built-ins", () => {
   });
 
   it("prefers a user-declared formatter over the built-in (shadow allowed)", () => {
-    // dummy hook to keep editor happy
-    void 0;
     const config: FormatterConfig = {
       formatters: {
         treefmt: { command: ["treefmt", "--ci"] },

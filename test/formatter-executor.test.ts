@@ -296,7 +296,6 @@ describe("executeChainGroup (fallback steps)", () => {
   });
 
   it("runs subsequent single steps even when the fallback group is a no-op", async () => {
-    void 0;
     const calls: string[] = [];
     const runner: CommandRunner = async (command) => {
       calls.push(command);
