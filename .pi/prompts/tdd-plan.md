@@ -50,9 +50,10 @@ If a step uncovers a problem the plan didn't anticipate (e.g. a downstream test 
 ## After the last TDD step
 
 1. Run the full suite: `pnpm exec vitest run`. Must be all green.
-2. Run the linter: `pnpm run lint`. If it fails, run `pnpm run lint:fix` and re-check. Commit any fixup as part of the most recent feat commit (amend) only if you haven't pushed; otherwise as a `style:` commit. The fixup must NOT land in a `docs:` commit.
-3. Update docs the plan flags: `README.md`, `docs/configuration.md`, schemas, etc. Commit as `docs: <summary>`.
-4. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
+2. Run the type check: `pnpm run typecheck` (`tsc --noEmit`). Must succeed — Vitest does not typecheck.
+3. Run the linter: `pnpm run lint`. If it fails, run `pnpm run lint:fix` and re-check. Commit any fixup as part of the most recent feat commit (amend) only if you haven't pushed; otherwise as a `style:` commit. The fixup must NOT land in a `docs:` commit.
+4. Update docs the plan flags: `README.md`, `docs/configuration.md`, schemas, etc. Commit as `docs: <summary>`.
+5. **Do not edit `CHANGELOG.md`** — release-please owns it and will generate entries from your Conventional Commit messages on the next release.
 
 ## Summarize
 

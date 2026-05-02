@@ -19,7 +19,7 @@ Before reading anything, make sure the working tree is up to date with the remot
 
 1. Run `gh issue view $1` to read the issue body and labels.
 2. Read `AGENTS.md` for project priorities, constraints, and code-style rules. Honor them in the plan.
-3. List `docs/plans/` to see numbering and style conventions. Pick the next free `NNNN` (prefer matching the issue number when reasonable).
+3. List `docs/plans/` to see numbering and style conventions (create the directory if it does not exist yet). Pick the next free `NNNN` (prefer matching the issue number when reasonable).
 4. Read every issue the body references as a prerequisite or related (`gh issue view <n>`). Note whether each is implemented yet — your plan must say what it depends on vs. defers.
 5. Open the source files most relevant to the change and skim them before writing.
 
