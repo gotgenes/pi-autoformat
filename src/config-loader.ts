@@ -994,15 +994,12 @@ function validateConfigObject(
     }
 
     if (key === "notifyAgent") {
-      const notifyAgent = validateBooleanField(
-        "notifyAgent",
-        entry,
+      pushIssue(
         issues,
+        "notifyAgent",
+        "notifyAgent has been removed; the extension now notifies via steering messages at turn end.",
         sourcePath,
       );
-      if (notifyAgent !== undefined) {
-        config.notifyAgent = notifyAgent;
-      }
       continue;
     }
 
@@ -1139,7 +1136,6 @@ function mergeUserConfigs(
   overrides: UserFormatterConfig,
 ): UserFormatterConfig {
   return {
-    notifyAgent: overrides.notifyAgent ?? base.notifyAgent,
     commandTimeoutMs: overrides.commandTimeoutMs ?? base.commandTimeoutMs,
     hideSummariesInTui: overrides.hideSummariesInTui ?? base.hideSummariesInTui,
     formatScope: overrides.formatScope ?? base.formatScope,

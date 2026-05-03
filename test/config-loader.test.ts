@@ -326,7 +326,7 @@ describe("loadAutoformatConfig", () => {
     const result = loadAutoformatConfig({ cwd, agentDir });
 
     expect(result.config).not.toHaveProperty("formatMode");
-    expect(result.config.notifyAgent).toBe(false);
+    expect(result.config).not.toHaveProperty("notifyAgent");
     expect(result.config.commandTimeoutMs).toBe(10000);
     expect(result.config.hideSummariesInTui).toBe(false);
     expect(result.issues).toEqual([]);
@@ -791,25 +791,28 @@ describe("validateUserFormatterConfig: eventBusMutationChannel", () => {
   });
 });
 
-describe("validateUserFormatterConfig: notifyAgent", () => {
-  it("accepts notifyAgent as a boolean", () => {
+describe("validateUserFormatterConfig: notifyAgent (removed)", () => {
+  it("emits a deprecation config issue when notifyAgent is present", () => {
     const result = validateUserFormatterConfig({
       notifyAgent: true,
     });
-    expect(result.issues).toEqual([]);
-    expect(result.config.notifyAgent).toBe(true);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0].path).toBe("notifyAgent");
+    expect(result.issues[0].message).toContain("removed");
+    expect(result.config).not.toHaveProperty("notifyAgent");
   });
 
-  it("rejects non-boolean notifyAgent", () => {
+  it("emits a deprecation issue even for notifyAgent: false", () => {
     const result = validateUserFormatterConfig({
-      notifyAgent: "yes",
+      notifyAgent: false,
     });
-    expect(result.issues.map((i) => i.path)).toEqual(["notifyAgent"]);
-    expect(result.config.notifyAgent).toBeUndefined();
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0].path).toBe("notifyAgent");
+    expect(result.issues[0].message).toContain("removed");
   });
 
-  it("defaults to false when not specified", () => {
+  it("does not include notifyAgent in the validated config", () => {
     const result = validateUserFormatterConfig({});
-    expect(result.config.notifyAgent).toBeUndefined();
+    expect(result.config).not.toHaveProperty("notifyAgent");
   });
 });

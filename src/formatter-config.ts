@@ -40,7 +40,6 @@ export const DEFAULT_EVENT_BUS_MUTATION_CHANNEL: EventBusMutationChannelConfig =
   };
 
 export type UserFormatterConfig = {
-  notifyAgent?: boolean;
   commandTimeoutMs?: number;
   hideSummariesInTui?: boolean;
   formatScope?: FormatScopeSetting;
@@ -53,7 +52,6 @@ export type UserFormatterConfig = {
 };
 
 export type AutoformatConfig = FormatterConfig & {
-  notifyAgent: boolean;
   commandTimeoutMs: number;
   hideSummariesInTui: boolean;
   formatScope: FormatScopeSetting;
@@ -66,7 +64,6 @@ export type AutoformatConfig = FormatterConfig & {
 };
 
 export const DEFAULT_FORMATTER_CONFIG: AutoformatConfig = {
-  notifyAgent: false,
   commandTimeoutMs: 10000,
   hideSummariesInTui: false,
   formatScope: "repoRoot",
@@ -89,8 +86,6 @@ export function createFormatterConfig(
   userConfig?: UserFormatterConfig,
 ): AutoformatConfig {
   return {
-    notifyAgent:
-      userConfig?.notifyAgent ?? DEFAULT_FORMATTER_CONFIG.notifyAgent,
     commandTimeoutMs:
       userConfig?.commandTimeoutMs ?? DEFAULT_FORMATTER_CONFIG.commandTimeoutMs,
     hideSummariesInTui:

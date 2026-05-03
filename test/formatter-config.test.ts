@@ -49,6 +49,12 @@ describe("createFormatterConfig", () => {
     expect(config.formatters.prettier?.disabled).toBe(true);
   });
 
+  it("does not include notifyAgent in the default config", () => {
+    const config = createFormatterConfig();
+
+    expect(config).not.toHaveProperty("notifyAgent");
+  });
+
   it("defaults formatterOutput to disabled with safe truncation caps", () => {
     const config = createFormatterConfig();
 
