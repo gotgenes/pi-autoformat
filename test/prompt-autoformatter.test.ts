@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { BuiltinFormatter } from "../src/builtin-formatters.js";
 import type { CommandRunner } from "../src/formatter-executor.js";
 import type { FormatterConfig } from "../src/formatter-registry.js";
@@ -285,6 +289,98 @@ describe("PromptAutoformatter", () => {
       } finally {
         Object.assign(BUILTIN_FORMATTERS.treefmt, original);
       }
+    });
+  });
+
+  describe("changedFiles detection", () => {
+    let workDir: string;
+
+    beforeEach(() => {
+      workDir = mkdtempSync(join(tmpdir(), "pi-autoformat-change-"));
+    });
+
+    afterEach(() => {
+      rmSync(workDir, { recursive: true, force: true });
+    });
+
+    it("populates changedFiles when the formatter modifies file content", async () => {
+      const filePath = join(workDir, "a.ts");
+      writeFileSync(filePath, "const   x=1;");
+
+      const runner: CommandRunner = async (_command, args) => {
+        // Simulate a formatter that rewrites the file
+        for (const arg of args) {
+          if (arg.endsWith(".ts")) {
+            writeFileSync(arg, "const x = 1;");
+          }
+        }
+        return { exitCode: 0 };
+      };
+
+      const cfg: FormatterConfig = {
+        formatters: { fmt: { command: ["fmt"] } },
+        chains: { ".ts": ["fmt"] },
+      };
+
+      const formatter = new PromptAutoformatter(workDir, cfg, runner);
+      formatter.addTouchedPath(filePath);
+
+      const result = await formatter.flushPrompt();
+
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].changedFiles).toEqual([filePath]);
+    });
+
+    it("leaves changedFiles empty when the formatter does not change content", async () => {
+      const filePath = join(workDir, "b.ts");
+      writeFileSync(filePath, "const x = 1;");
+
+      const runner: CommandRunner = async () => {
+        // Formatter is a no-op
+        return { exitCode: 0 };
+      };
+
+      const cfg: FormatterConfig = {
+        formatters: { fmt: { command: ["fmt"] } },
+        chains: { ".ts": ["fmt"] },
+      };
+
+      const formatter = new PromptAutoformatter(workDir, cfg, runner);
+      formatter.addTouchedPath(filePath);
+
+      const result = await formatter.flushPrompt();
+
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].changedFiles).toEqual([]);
+    });
+
+    it("excludes deleted files from changedFiles", async () => {
+      const filePath = join(workDir, "c.ts");
+      writeFileSync(filePath, "delete me");
+
+      const runner: CommandRunner = async (_command, args) => {
+        // Simulate formatter that deletes the file
+        const { unlinkSync } = await import("node:fs");
+        for (const arg of args) {
+          if (arg.endsWith(".ts")) {
+            unlinkSync(arg);
+          }
+        }
+        return { exitCode: 0 };
+      };
+
+      const cfg: FormatterConfig = {
+        formatters: { fmt: { command: ["fmt"] } },
+        chains: { ".ts": ["fmt"] },
+      };
+
+      const formatter = new PromptAutoformatter(workDir, cfg, runner);
+      formatter.addTouchedPath(filePath);
+
+      const result = await formatter.flushPrompt();
+
+      expect(result.groups).toHaveLength(1);
+      expect(result.groups[0].changedFiles).toEqual([]);
     });
   });
 });

@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+
 import type { DiscoveryCache } from "./builtin-formatters.js";
 import {
   type CommandProbe,
@@ -26,6 +29,7 @@ export type ChainGroupResult = {
   chain: ChainStep[];
   files: string[];
   runs: BatchRun[];
+  changedFiles: string[];
 };
 
 export type PromptAutoformatterResult = {
@@ -42,6 +46,15 @@ export type PromptAutoformatterOptions = {
    */
   commandProbe?: CommandProbe;
 };
+
+async function hashFile(filePath: string): Promise<string | undefined> {
+  try {
+    const content = await readFile(filePath);
+    return createHash("sha256").update(content).digest("hex");
+  } catch {
+    return undefined;
+  }
+}
 
 export class PromptAutoformatter {
   private readonly queue: TouchedFilesQueue;
@@ -104,6 +117,15 @@ export class PromptAutoformatter {
         continue;
       }
 
+      // Snapshot file content hashes before formatting.
+      const preHashes = new Map<string, string>();
+      for (const file of inputFiles) {
+        const hash = await hashFile(file);
+        if (hash !== undefined) {
+          preHashes.set(file, hash);
+        }
+      }
+
       const { runs, unhandled } = await executeChainGroupWithPartition(
         { chain: resolved, files: inputFiles },
         this.runner,
@@ -133,10 +155,26 @@ export class PromptAutoformatter {
         continue;
       }
 
+      // Determine which files were actually changed by comparing post-format
+      // hashes to the pre-format snapshots.
+      const changedFiles: string[] = [];
+      for (const file of inputFiles) {
+        const afterHash = await hashFile(file);
+        if (afterHash === undefined) {
+          // File was deleted by the formatter — exclude.
+          continue;
+        }
+        const beforeHash = preHashes.get(file);
+        if (beforeHash !== afterHash) {
+          changedFiles.push(file);
+        }
+      }
+
       groupResults.push({
         chain: group.chain,
         files: [...inputFiles],
         runs,
+        changedFiles,
       });
     }
 
