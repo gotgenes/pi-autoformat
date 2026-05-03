@@ -39,6 +39,10 @@ type SchemaShape = {
 describe("pi-autoformat.schema.json", () => {
   const schema: SchemaShape = JSON.parse(readFileSync(schemaPath, "utf8"));
 
+  it("does not declare a notifyAgent property", () => {
+    expect(schema.properties).not.toHaveProperty("notifyAgent");
+  });
+
   it("does not declare an extensions property on formatterDefinition", () => {
     const properties = schema.$defs?.formatterDefinition?.properties ?? {};
     expect(properties).not.toHaveProperty("extensions");
