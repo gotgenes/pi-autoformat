@@ -1,5 +1,44 @@
 # Changelog
 
+## [4.0.0](https://github.com/gotgenes/pi-autoformat/compare/v3.0.1...v4.0.0) (2026-05-03)
+
+
+### ⚠ BREAKING CHANGES
+
+* The agent_end follow-up turn mechanism has been removed. Formatting notifications are now delivered inline as steering messages between turns.
+* notifyAgent is no longer accepted in the configuration schema. The extension now notifies via steering messages at turn end.
+* notifyAgent config field has been removed. The extension now notifies via steering messages at turn end.
+
+### Features
+
+* add buildSteeringMessageContent helper ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([e0e7d86](https://github.com/gotgenes/pi-autoformat/commit/e0e7d867adea60727c21da9ebb57d819d8a2c5ba))
+* add pi-extension-lifecycle skill with turn/tool model reference ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([a136bc6](https://github.com/gotgenes/pi-autoformat/commit/a136bc6a17b3cd68b57ef1524cb0773a09343703))
+* detect content changes in flushPrompt ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([65c735d](https://github.com/gotgenes/pi-autoformat/commit/65c735dd86b0553d608f465b20c59e2c337b5a38))
+* flush formatters at turn_end ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([6b27a78](https://github.com/gotgenes/pi-autoformat/commit/6b27a78048eb95d5f1d0e43d0def18961a4568c4))
+* include failure details in steering notification ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([28109a6](https://github.com/gotgenes/pi-autoformat/commit/28109a6e54ee8c5ad6c36664079f7dba59e8a793))
+* remove notifyAgent config field ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([d5b1d0c](https://github.com/gotgenes/pi-autoformat/commit/d5b1d0c1bdfdda5409c8b50d2d8d777c035a7680))
+* remove notifyAgent from schema ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([c936148](https://github.com/gotgenes/pi-autoformat/commit/c93614868fd98a36f40fd6c443db761858162fae))
+* replace agent_end follow-up with turn-end steering ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([8e2e7bb](https://github.com/gotgenes/pi-autoformat/commit/8e2e7bb8a21c8f217b0e8c341032820f968bcf36))
+* send steering notification after turn-end formatting ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([aa18c6d](https://github.com/gotgenes/pi-autoformat/commit/aa18c6db604bc77d7b34a05601965dbd32bad92b))
+
+
+### Bug Fixes
+
+* markdownlint table separator spacing in plan and skill ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([84767fa](https://github.com/gotgenes/pi-autoformat/commit/84767fa8c9a8bb630339842cf3f067e8960619f4))
+
+
+### Documentation
+
+* add plan for pre-commit flush ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([2ffd469](https://github.com/gotgenes/pi-autoformat/commit/2ffd469c5d3c29bbe550fa4c449dc378c7548636))
+* add table separator spacing rule to AGENTS.md ([b3076e8](https://github.com/gotgenes/pi-autoformat/commit/b3076e8f810d0f2c4f0c77ad519964b62faf3289))
+* document turn-end formatting and steering notifications ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([2fc6bf5](https://github.com/gotgenes/pi-autoformat/commit/2fc6bf533adf4fe333febcef73f2f5e0db032658))
+* plan turn-end flush with change detection ([#31](https://github.com/gotgenes/pi-autoformat/issues/31)) ([a4429a8](https://github.com/gotgenes/pi-autoformat/commit/a4429a8fa3e432e69e093aa030674207ac89d122))
+
+
+### Miscellaneous Chores
+
+* remove --fix flags from prek hooks ([a9664a2](https://github.com/gotgenes/pi-autoformat/commit/a9664a285473a7306e28a67f03ff517681a4c8ab))
+
 ## [3.0.1](https://github.com/gotgenes/pi-autoformat/compare/v3.0.0...v3.0.1) (2026-05-02)
 
 
