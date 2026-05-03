@@ -1506,6 +1506,41 @@ describe("createAutoformatExtension", () => {
     expect(pi.sentMessages).toHaveLength(0);
   });
 
+  it("formats EventBus-sourced files at agent_end as safety net", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const reportFlushResult = vi.fn();
+    let flushCallCount = 0;
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockImplementation(() => {
+          flushCallCount += 1;
+          // First flush (turn_end) is empty; second (agent_end) has work
+          if (flushCallCount === 1) {
+            return Promise.resolve({ groups: [] });
+          }
+          return Promise.resolve(createFlushResult());
+        }),
+        addTouchedPath: vi.fn(),
+      }),
+      reportFlushResult,
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    // Simulate EventBus file added after turn_end
+    await pi.emit("turn_end", {}, ctx);
+    // Now agent_end flushes the EventBus-sourced file
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(reportFlushResult).toHaveBeenCalledTimes(2);
+    // Second call has groups (from the safety-net flush)
+    const secondResult = reportFlushResult.mock.calls[1][0];
+    expect(secondResult.groups.length).toBeGreaterThan(0);
+  });
+
   it("does not re-flush at agent_end after turn_end already flushed", async () => {
     const pi = new TestPi();
     const ctx = createContext();
@@ -1621,10 +1656,7 @@ describe("buildSteeringMessageContent", () => {
   });
 
   it("truncates file lists beyond 10 files", () => {
-    const changedFiles = Array.from(
-      { length: 11 },
-      (_, i) => `/repo/f${i}.ts`,
-    );
+    const changedFiles = Array.from({ length: 11 }, (_, i) => `/repo/f${i}.ts`);
     const result = buildSteeringMessageContent({
       groups: [
         {
@@ -1707,5 +1739,3 @@ describe("buildSteeringMessageContent", () => {
     expect(result).toContain("prettier (exit 2)");
   });
 });
-
-

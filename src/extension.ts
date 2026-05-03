@@ -725,9 +725,11 @@ export function createAutoformatExtension(
     if (result) {
       const content = buildSteeringMessageContent(result);
       if (content) {
-        pi.sendMessage(
-          { customType: "autoformat-steering", content, display: true },
-        );
+        pi.sendMessage({
+          customType: "autoformat-steering",
+          content,
+          display: true,
+        });
       }
     }
   });
