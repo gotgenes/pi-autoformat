@@ -108,7 +108,6 @@ type SessionState = {
   autoformatter: PromptAutoformatterLike;
   snapshotTracker: SnapshotTracker | undefined;
   unsubscribeEventBus: (() => void) | undefined;
-  followUpPending: boolean;
 };
 
 type ExecFileError = Error & {
@@ -517,60 +516,6 @@ export function buildSteeringMessageContent(
   return parts.join("\n\n") || undefined;
 }
 
-const NOTIFY_MAX_FILES = 10;
-
-export function buildNotifyMessageContent(
-  result: PromptAutoformatterResult,
-): string | undefined {
-  if (result.groups.length === 0) {
-    return undefined;
-  }
-
-  const allFiles: string[] = [];
-  const successFiles: string[] = [];
-  const failureLines: string[] = [];
-
-  for (const group of result.groups) {
-    allFiles.push(...group.files);
-    for (const run of group.runs) {
-      if (run.success) {
-        successFiles.push(...run.files);
-      } else {
-        const fileList = run.files.join(", ");
-        failureLines.push(
-          `  ${run.formatterName} (exit ${run.exitCode}) on ${fileList}:`,
-        );
-        if (run.stderr) {
-          failureLines.push(`    stderr: ${run.stderr}`);
-        }
-        if (run.stdout) {
-          failureLines.push(`    stdout: ${run.stdout}`);
-        }
-      }
-    }
-  }
-
-  const parts: string[] = [];
-
-  if (successFiles.length > 0) {
-    const shown = successFiles.slice(0, NOTIFY_MAX_FILES);
-    const remaining = successFiles.length - shown.length;
-    let fileList = shown.join(", ");
-    if (remaining > 0) {
-      fileList += `, … and ${remaining} more`;
-    }
-    parts.push(
-      `[autoformat] Formatted ${successFiles.length} file(s): ${fileList}`,
-    );
-  }
-
-  if (failureLines.length > 0) {
-    parts.push(["Failures:", ...failureLines].join("\n"));
-  }
-
-  return parts.join("\n\n") || undefined;
-}
-
 function buildLegacyFailureMessage(summary: FlushSummary): string {
   const batchWord = summary.failureBatchCount === 1 ? "batch" : "batches";
   return [
@@ -710,7 +655,6 @@ export function createAutoformatExtension(
       autoformatter,
       snapshotTracker,
       unsubscribeEventBus,
-      followUpPending: false,
     };
     return state;
   }
@@ -789,27 +733,9 @@ export function createAutoformatExtension(
   });
 
   pi.on("agent_end", async (_event, ctx) => {
-    const sessionState = ensureState(ctx.cwd);
-    const wasFollowUp = sessionState.followUpPending;
-    sessionState.followUpPending = false;
-
-    const result = await queueFlush(ctx);
-
-    if (
-      sessionState.loadResult.config.notifyAgent &&
-      !wasFollowUp &&
-      result &&
-      result.groups.length > 0
-    ) {
-      const content = buildNotifyMessageContent(result);
-      if (content) {
-        sessionState.followUpPending = true;
-        pi.sendMessage(
-          { customType: "autoformat-notify", content, display: true },
-          { triggerTurn: true },
-        );
-      }
-    }
+    // Safety-net flush: in the normal case, turn_end has already drained
+    // the queue, so this is a no-op.
+    await queueFlush(ctx);
   });
 
   pi.on("session_shutdown", async (_event, ctx) => {
