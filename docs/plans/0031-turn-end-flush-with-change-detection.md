@@ -46,7 +46,7 @@ Zero instances of same-file edits within a single turn were found across all ses
 ### Session data analysis
 
 | Metric | Count | % |
-|---|---|---|
+| --- | --- | --- |
 | Total turns with tools | 4,925 | 100% |
 | Single-tool turns | 4,515 | 91.7% |
 | Multi-tool turns | 410 | 8.3% |
@@ -79,6 +79,7 @@ agent_end  ← SAFETY-NET FLUSH
 ```
 
 Key properties:
+
 - `turn_end` is fully `await`ed before the next `turn_start`.
 - During the turn loop, `isStreaming` is `true`; `pi.sendMessage()` defaults to `agent.steer()`.
 - Steering messages are consumed as `pendingMessages` at the start of the next turn, injected before the LLM call.
@@ -87,7 +88,7 @@ Key properties:
 ### Relevant modules
 
 | Module | Role |
-|---|---|
+| --- | --- |
 | `src/extension.ts` | Extension entrypoint. Lifecycle handlers for `session_start`, `tool_call`, `tool_result`, `agent_end`, `session_shutdown`. Owns `queueFlush()` and reporting. |
 | `src/prompt-autoformatter.ts` | `PromptAutoformatter` class. `flushPrompt()` drains the touched-file queue and runs formatter chains. |
 | `src/formatter-executor.ts` | `BatchRun` type with `stdout`, `stderr`, `exitCode`. Runs formatter commands. |
@@ -128,6 +129,7 @@ export type ChainGroupResult = {
 ```
 
 In `flushPrompt()`, before running each chain group's formatter:
+
 1. Read and hash (SHA-256) each input file.
 2. Run the formatter.
 3. Re-read and hash each file.
@@ -172,12 +174,14 @@ File list truncated at 10 with "… and N more" suffix.
 Failure details use the existing `formatterOutput` config limits.
 
 No message is sent when:
+
 - The flush processed no files (empty queue).
 - The formatter ran but no files changed and no runs failed.
 
 ### Removing `notifyAgent`
 
 Per AGENTS.md deprecation policy:
+
 - Remove `notifyAgent` from `AutoformatConfig`, `UserFormatterConfig`, `createFormatterConfig()`.
 - Remove from `schemas/pi-autoformat.schema.json` and `docs/configuration.md`.
 - In `src/config-loader.ts`: when `notifyAgent` key is present, emit a config issue (`notifyAgent has been removed; the extension now notifies via steering messages at turn end.`) and discard.

@@ -84,7 +84,7 @@ agent_end
 ## Event handler capabilities
 
 | Event | Awaited? | Can return result? | Result capabilities |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `session_start` | yes | no | — |
 | `turn_start` | yes | no | — |
 | `context` | yes | yes | inject/modify messages before LLM call |
@@ -115,7 +115,7 @@ During the agent loop, `isStreaming` is `true` (set at start, cleared in `finish
 This affects `sendMessage` behavior:
 
 | State | `sendMessage()` default | `deliverAs: "steer"` | `deliverAs: "followUp"` | `triggerTurn: true` |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | Streaming (during turns) | `agent.steer()` | `agent.steer()` | `agent.followUp()` | N/A (streaming) |
 | Not streaming (between prompts) | append to session | — | — | `agent.prompt()` — starts new turn |
 
@@ -212,7 +212,7 @@ Returning `{ block: true, reason: "..." }` from a `tool_call` handler:
 Analysis of 4,925 tool-using turns across multiple projects (pi-autoformat, pi-permission-system, and others):
 
 | Pattern | Count | % |
-|---|---|---|
+| --- | --- | --- |
 | Single-tool turns | 4,515 | 91.7% |
 | Multi-tool turns | 410 | 8.3% |
 | Same-file edits within one turn | 0 | 0% |
