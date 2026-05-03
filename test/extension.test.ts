@@ -1607,6 +1607,47 @@ describe("createAutoformatExtension", () => {
     expect(pi.sentMessages).toHaveLength(0);
   });
 
+  it("sends a steering message with failure details on formatter failure", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["biome"],
+              files: ["/repo/src/broken.ts"],
+              runs: [
+                {
+                  formatterName: "biome",
+                  command: ["biome", "format", "--write"],
+                  files: ["/repo/src/broken.ts"],
+                  success: false,
+                  exitCode: 1,
+                  stderr: "SyntaxError: Unexpected token at line 42",
+                },
+              ],
+              changedFiles: [],
+            },
+          ],
+        }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("turn_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(1);
+    const content = pi.sentMessages[0].message.content as string;
+    expect(content).toContain("Failures:");
+    expect(content).toContain("biome (exit 1) on /repo/src/broken.ts");
+    expect(content).toContain("SyntaxError: Unexpected token at line 42");
+  });
+
   it("does not send a steering message on empty flush", async () => {
     const pi = new TestPi();
     const ctx = createContext();
