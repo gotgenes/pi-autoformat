@@ -51,24 +51,6 @@ Pinned tag:
 
 ## Settings reference
 
-### `notifyAgent`
-
-After formatting, send a follow-up message to the agent listing formatted files and any failures, triggering one more agent turn so it can react (e.g., amend a commit or fix formatter errors).
-
-Default: `false`.
-
-Example:
-
-```json
-{
-  "notifyAgent": true
-}
-```
-
-When enabled and the formatter produces results, the extension calls `pi.sendMessage()` with `{ triggerTurn: true }` after the prompt-end flush.
-The agent sees which files were formatted and any failure details (stderr, exit code), and gets one turn to react.
-A loop guard ensures at most one follow-up per user prompt.
-
 ### `commandTimeoutMs`
 
 Timeout in milliseconds for each formatter command.

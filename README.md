@@ -23,13 +23,22 @@ This package moves formatting earlier in the workflow so the agent is less likel
 `pi-autoformat` watches files touched by Pi mutation tools and runs configured formatter commands for just those files.
 
 Formatting is **opt-in**: no formatters run until you declare `chains` in your project config.
-Touched files are collected during the agent's work and formatters run once after the prompt finishes.
-This is safer than formatting after every edit because batching avoids mutating a file in between sibling exact-text edits.
 
-Design goals:
+### Timing
+
+Touched files are collected during each agent turn and formatted at `turn_end`, before the agent's next LLM call.
+This means files are already formatted before any subsequent `git commit` command, eliminating pre-commit hook failures.
+
+When formatting actually changes file content or a formatter fails, the extension sends a steering message that the agent sees at the start of its next turn.
+This lets the agent react — for example, amending a commit or fixing a formatter error — without requiring a separate follow-up turn.
+
+A safety-net flush also runs at `agent_end` to catch files added via the EventBus or other non-turn paths.
+
+### Design goals
 
 - format only files the agent touched
-- prefer prompt-end batching over per-edit formatting
+- flush between turns so commits see formatted files
+- notify the agent inline only when formatting actually changed content or failed
 - support repository-specific formatter commands and ordered chains
 - surface formatter failures without blocking the original edit
 - delegate formatter configuration to the formatters themselves — `pi-autoformat` invokes the tool and lets it find its own project config
@@ -69,7 +78,7 @@ No formatters run until you declare `chains` — this avoids surprises from a de
 }
 ```
 
-For everything else — formatter chains and fallback groups, wildcard chains, built-in `treefmt` and `treefmt-nix` support, format scope, shell mutation coverage, custom mutation tools, the event-bus channel, agent follow-up notifications (`notifyAgent`), and detailed failure output — see [docs/configuration.md](docs/configuration.md).
+For everything else — formatter chains and fallback groups, wildcard chains, built-in `treefmt` and `treefmt-nix` support, format scope, shell mutation coverage, custom mutation tools, the event-bus channel, turn-end steering notifications, and detailed failure output — see [docs/configuration.md](docs/configuration.md).
 
 ## Reporting
 
