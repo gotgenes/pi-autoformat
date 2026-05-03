@@ -457,6 +457,66 @@ function formatStatusLine(
   return `${mark} ${label} ${summary.fileCount} ${fileWord}${formatters}`;
 }
 
+const STEERING_MAX_FILES = 10;
+
+export function buildSteeringMessageContent(
+  result: PromptAutoformatterResult,
+): string | undefined {
+  if (result.groups.length === 0) {
+    return undefined;
+  }
+
+  const changedFiles: string[] = [];
+  const failureLines: string[] = [];
+
+  for (const group of result.groups) {
+    changedFiles.push(...group.changedFiles);
+    for (const run of group.runs) {
+      if (run.success) {
+        continue;
+      }
+      const fileList = run.files.join(", ");
+      failureLines.push(
+        `  ${run.formatterName} (exit ${run.exitCode}) on ${fileList}:`,
+      );
+      if (run.stderr) {
+        failureLines.push(`    ${run.stderr}`);
+      }
+      if (run.stdout) {
+        failureLines.push(`    ${run.stdout}`);
+      }
+    }
+  }
+
+  if (changedFiles.length === 0 && failureLines.length === 0) {
+    return undefined;
+  }
+
+  const parts: string[] = [];
+
+  if (changedFiles.length > 0) {
+    const shown = changedFiles.slice(0, STEERING_MAX_FILES);
+    const remaining = changedFiles.length - shown.length;
+    let list = shown.join(", ");
+    if (remaining > 0) {
+      list += `, \u2026 and ${remaining} more`;
+    }
+    parts.push(
+      `[autoformat] Formatted ${changedFiles.length} file(s): ${list}`,
+    );
+  }
+
+  if (failureLines.length > 0) {
+    if (changedFiles.length === 0) {
+      parts.push(["[autoformat] Failures:", ...failureLines].join("\n"));
+    } else {
+      parts.push(["Failures:", ...failureLines].join("\n"));
+    }
+  }
+
+  return parts.join("\n\n") || undefined;
+}
+
 const NOTIFY_MAX_FILES = 10;
 
 export function buildNotifyMessageContent(

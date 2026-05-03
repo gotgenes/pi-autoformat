@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { LoadConfigResult } from "../src/config-loader.js";
 import {
   buildNotifyMessageContent,
+  buildSteeringMessageContent,
   createAutoformatExtension,
   createDefaultAutoformatter,
 } from "../src/extension.js";
@@ -20,6 +21,7 @@ type EventName =
   | "session_start"
   | "tool_call"
   | "tool_result"
+  | "turn_end"
   | "agent_end"
   | "session_shutdown";
 
@@ -1495,6 +1497,169 @@ describe("createAutoformatExtension", () => {
     // The guard should have reset after the follow-up's agent_end
     await pi.emit("agent_end", {}, ctx);
     expect(pi.sentMessages).toHaveLength(2);
+  });
+});
+
+describe("buildSteeringMessageContent", () => {
+  it("returns undefined when no changedFiles and no failures", () => {
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/a.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/a.ts"],
+              success: true,
+              exitCode: 0,
+            },
+          ],
+          changedFiles: [],
+        },
+      ],
+    });
+    expect(result).toBeUndefined();
+  });
+
+  it("returns undefined for empty groups", () => {
+    expect(buildSteeringMessageContent({ groups: [] })).toBeUndefined();
+  });
+
+  it("lists a single changed file", () => {
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/src/foo.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/src/foo.ts"],
+              success: true,
+              exitCode: 0,
+            },
+          ],
+          changedFiles: ["/repo/src/foo.ts"],
+        },
+      ],
+    });
+    expect(result).toContain("[autoformat] Formatted 1 file(s)");
+    expect(result).toContain("/repo/src/foo.ts");
+  });
+
+  it("lists three changed files", () => {
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: [],
+              files: ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"],
+              success: true,
+              exitCode: 0,
+            },
+          ],
+          changedFiles: ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"],
+        },
+      ],
+    });
+    expect(result).toContain("3 file(s)");
+    expect(result).toContain("/repo/a.ts");
+    expect(result).toContain("/repo/b.ts");
+    expect(result).toContain("/repo/c.ts");
+  });
+
+  it("truncates file lists beyond 10 files", () => {
+    const changedFiles = Array.from(
+      { length: 11 },
+      (_, i) => `/repo/f${i}.ts`,
+    );
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: changedFiles,
+          runs: [
+            {
+              formatterName: "prettier",
+              command: [],
+              files: changedFiles,
+              success: true,
+              exitCode: 0,
+            },
+          ],
+          changedFiles,
+        },
+      ],
+    });
+    expect(result).toContain("11 file(s)");
+    expect(result).toContain("/repo/f9.ts");
+    expect(result).not.toContain("/repo/f10.ts");
+    expect(result).toContain("and 1 more");
+  });
+
+  it("includes failure details with stderr", () => {
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/bad.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/bad.ts"],
+              success: false,
+              exitCode: 2,
+              stderr: "SyntaxError: Unexpected token at line 42",
+            },
+          ],
+          changedFiles: [],
+        },
+      ],
+    });
+    expect(result).toContain("Failures:");
+    expect(result).toContain("prettier (exit 2) on /repo/bad.ts");
+    expect(result).toContain("SyntaxError: Unexpected token at line 42");
+  });
+
+  it("includes both changed files and failures", () => {
+    const result = buildSteeringMessageContent({
+      groups: [
+        {
+          chain: ["prettier"],
+          files: ["/repo/ok.ts", "/repo/bad.ts"],
+          runs: [
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/ok.ts"],
+              success: true,
+              exitCode: 0,
+            },
+            {
+              formatterName: "prettier",
+              command: ["prettier", "--write"],
+              files: ["/repo/bad.ts"],
+              success: false,
+              exitCode: 2,
+              stderr: "SyntaxError",
+            },
+          ],
+          changedFiles: ["/repo/ok.ts"],
+        },
+      ],
+    });
+    expect(result).toContain("[autoformat] Formatted 1 file(s)");
+    expect(result).toContain("/repo/ok.ts");
+    expect(result).toContain("Failures:");
+    expect(result).toContain("prettier (exit 2)");
   });
 });
 
