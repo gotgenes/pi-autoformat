@@ -777,7 +777,15 @@ export function createAutoformatExtension(
   });
 
   pi.on("turn_end", async (_event, ctx) => {
-    await queueFlush(ctx);
+    const result = await queueFlush(ctx);
+    if (result) {
+      const content = buildSteeringMessageContent(result);
+      if (content) {
+        pi.sendMessage(
+          { customType: "autoformat-steering", content, display: true },
+        );
+      }
+    }
   });
 
   pi.on("agent_end", async (_event, ctx) => {

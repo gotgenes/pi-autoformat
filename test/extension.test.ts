@@ -180,6 +180,7 @@ function createFlushResult(): PromptAutoformatterResult {
             exitCode: 0,
           },
         ],
+        changedFiles: [],
       },
     ],
   };
@@ -1529,6 +1530,100 @@ describe("createAutoformatExtension", () => {
 
     expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
     expect(reportFlushResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends a steering message when turn_end flush changes files", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/src/foo.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write"],
+                  files: ["/repo/src/foo.ts"],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+              changedFiles: ["/repo/src/foo.ts"],
+            },
+          ],
+        }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("turn_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(1);
+    const content = pi.sentMessages[0].message.content as string;
+    expect(content).toContain("[autoformat] Formatted 1 file(s)");
+    expect(content).toContain("/repo/src/foo.ts");
+  });
+
+  it("does not send a steering message when turn_end flush has no changes and no failures", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({
+          groups: [
+            {
+              chain: ["prettier"],
+              files: ["/repo/src/foo.ts"],
+              runs: [
+                {
+                  formatterName: "prettier",
+                  command: ["prettier", "--write"],
+                  files: ["/repo/src/foo.ts"],
+                  success: true,
+                  exitCode: 0,
+                },
+              ],
+              changedFiles: [],
+            },
+          ],
+        }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("turn_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(0);
+  });
+
+  it("does not send a steering message on empty flush", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue({
+        recordToolResult: vi.fn(),
+        flushPrompt: vi.fn().mockResolvedValue({ groups: [] }),
+        addTouchedPath: vi.fn(),
+      }),
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit("turn_end", {}, ctx);
+
+    expect(pi.sentMessages).toHaveLength(0);
   });
 
   it("does not re-flush at agent_end after turn_end already flushed", async () => {
