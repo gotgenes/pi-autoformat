@@ -776,6 +776,10 @@ export function createAutoformatExtension(
     }
   });
 
+  pi.on("turn_end", async (_event, ctx) => {
+    await queueFlush(ctx);
+  });
+
   pi.on("agent_end", async (_event, ctx) => {
     const sessionState = ensureState(ctx.cwd);
     const wasFollowUp = sessionState.followUpPending;

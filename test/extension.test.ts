@@ -1498,6 +1498,76 @@ describe("createAutoformatExtension", () => {
     await pi.emit("agent_end", {}, ctx);
     expect(pi.sentMessages).toHaveLength(2);
   });
+
+  it("flushes formatters at turn_end", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const autoformatter = {
+      recordToolResult: vi.fn(),
+      flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+      addTouchedPath: vi.fn(),
+    };
+    const reportFlushResult = vi.fn();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue(autoformatter),
+      reportFlushResult,
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit(
+      "tool_result",
+      {
+        toolName: "write",
+        input: { path: "src/example.ts", content: "export {};" },
+        isError: false,
+      },
+      ctx,
+    );
+    await pi.emit("turn_end", {}, ctx);
+
+    expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
+    expect(reportFlushResult).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-flush at agent_end after turn_end already flushed", async () => {
+    const pi = new TestPi();
+    const ctx = createContext();
+    const autoformatter = {
+      recordToolResult: vi.fn(),
+      flushPrompt: vi.fn().mockResolvedValue(createFlushResult()),
+      addTouchedPath: vi.fn(),
+    };
+    const reportFlushResult = vi.fn();
+
+    createAutoformatExtension(pi.asExtensionAPI(), {
+      loadConfig: vi.fn().mockReturnValue(createLoadResult()),
+      createAutoformatter: vi.fn().mockReturnValue(autoformatter),
+      reportFlushResult,
+    });
+
+    await pi.emit("session_start", {}, ctx);
+    await pi.emit(
+      "tool_result",
+      {
+        toolName: "write",
+        input: { path: "src/example.ts", content: "export {};" },
+        isError: false,
+      },
+      ctx,
+    );
+    await pi.emit("turn_end", {}, ctx);
+    reportFlushResult.mockClear();
+    autoformatter.flushPrompt.mockClear();
+
+    // agent_end calls flush but queue is already empty
+    autoformatter.flushPrompt.mockResolvedValue({ groups: [] });
+    await pi.emit("agent_end", {}, ctx);
+
+    expect(autoformatter.flushPrompt).toHaveBeenCalledTimes(1);
+    // The second flush should produce an empty result
+  });
 });
 
 describe("buildSteeringMessageContent", () => {
