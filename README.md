@@ -1,3 +1,8 @@
+> **⚠️ This repository has moved to [gotgenes/pi-packages](https://github.com/gotgenes/pi-packages) (pi-autoformat).**
+> Please file issues and PRs there.
+> 
+> The code and all commit history lives on in the monorepo.
+
 <p align="center">
   <img src="docs/assets/logo.png" alt="pi-autoformat logo" width="400">
 </p>
